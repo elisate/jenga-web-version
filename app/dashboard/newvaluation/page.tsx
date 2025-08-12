@@ -3,6 +3,7 @@
 "use client";
 import { useEffect, useState } from 'react';
 import { getEvaluationWithDetails } from '@/Reporting/evaluationDetail';
+import Link from 'next/link';
 
 interface EvaluationItem {
   evaluation_data_id: number;
@@ -47,7 +48,9 @@ export default function EvaluationList() {
           <p><strong>Site Works:</strong> {evalItem.siteWorks?.access_types ?? 'N/A'}</p>
           <p><strong>Property ID:</strong> {evalItem.property_id}</p>
           <p><strong>Created At:</strong> {evalItem.created_at ? new Date(evalItem.created_at).toLocaleString() : 'N/A'}</p>
-          <button className='bg-blue-400 p-2 cursor-pointer'>view report</button>
+           <Link href={`/dashboard/newvaluation/${evalItem.evaluation_data_id}`}>
+            <button className='bg-blue-400 p-2 cursor-pointer'>View Report</button>
+          </Link>
         </div>
       ))}
     </div>

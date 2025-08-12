@@ -1,4 +1,9 @@
 "use client";
+
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
+import { getEvaluationDetailsById } from "@/Reporting/evaluationDetail"; // adjust path
+
 import Instructions from "@/components/evaluation/Instructions";
 import DefinitionOfValues from "@/components/evaluation/DefinitionOfValues";
 import BasisOfValuation from "@/components/evaluation/BasisOfValuation";
@@ -13,52 +18,53 @@ import ValuationComputationTable from "@/components/evaluation/ValuationComputat
 import Declaration from "@/components/evaluation/Declaration";
 
 export default function ValuationReport() {
+  const { id } = useParams(); // from /dashboard/newvaluation/[id]
+  const evaluationId = Number(id);
 
-//generate pdf
-const generatePDF = async () => {
-  try {
-    const response = await fetch('/api/generate-pdf');
-    if (!response.ok) throw new Error('Failed to generate PDF');
+  const [evaluationData, setEvaluationData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-    const blob = await response.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'valuation-report.pdf';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    window.URL.revokeObjectURL(url);
-  } catch (error) {
-    console.error('Error generating PDF:', error);
-  }
-};
+  useEffect(() => {
+    async function fetchEvaluation() {
+      setLoading(true);
 
+      const data = await getEvaluationDetailsById(evaluationId);
+      setEvaluationData(data);
 
+      setLoading(false);
+    }
+
+    if (evaluationId) {
+      fetchEvaluation();
+    }
+  }, [evaluationId]);
+
+  if (loading) return <p>Loading...</p>;
+  if (!evaluationData) return <p>No evaluation data found.</p>;
 
   return (
     <div className="container mx-auto p-6">
       <button
-        onClick={generatePDF}
+        onClick={() => {
+          // TODO: PDF generation logic
+        }}
         className="mb-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
       >
         Download PDF
       </button>
 
-      <div>
-        <Instructions />
-        <DefinitionOfValues />
-        <BasisOfValuation />
-        <LimitingCondition />
-        <Assumptions />
-        <Declaration />
-        <PropertyLocation />
-        <TenureTenanciesPlot />
-        <ServiceSiteWorks />
-        <Buildings />
-        <GeneralRemarks />
-        <ValuationComputationTable />
-      </div>
+      <Instructions />
+      <DefinitionOfValues />
+      <BasisOfValuation />
+      <LimitingCondition />
+      <Assumptions />
+      <Declaration />
+      <PropertyLocation />
+      <TenureTenanciesPlot />
+      <ServiceSiteWorks siteWorks={evaluationData?.siteWorks ?? null} />
+      <Buildings data={evaluationData?.building ?? null} />
+      <GeneralRemarks />
+      <ValuationComputationTable />
     </div>
   );
 }

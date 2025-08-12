@@ -55,7 +55,7 @@ const generatePDF = async () => {
         <PropertyLocation />
         <TenureTenanciesPlot />
         <ServiceSiteWorks />
-        <Buildings />
+        <Buildings/>
         <GeneralRemarks />
         <ValuationComputationTable />
       </div>

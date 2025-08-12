@@ -1,152 +1,46 @@
 import React from 'react';
 
-const buildingData = [
-  {
-    category: "BUILDINGS",
-    details: ["House I"],
-  },
-  {
-    category: "FOUNDATION",
-    details: [
-      "Mud mortar and adobe blocks",
-      "Mud mortar and stones",
-      "Cement & sand mortar and stones",
-    ],
-  },
-  {
-    category: "FLOOR FINISHING/PAVEMENT",
-    details: [
-      "Unfinished",
-      "Mass & plain concrete",
-      "Cement screed",
-      "Timber",
-      "Ceramic tiles",
-      "Recycled tiles",
-      "Cement and sand concrete",
-      "R.C.C",
-    ],
-  },
-  {
-    category: "WALL",
-    details: [
-      "Cob",
-      "Timber members",
-      "Adobe blocks",
-      "Burnt clay bricks",
-      "Cement blocks",
-      "Hydrofroam",
-      "R.C.C",
-      "Glass sheets",
-      "Plywood panels & boards",
-    ],
-  },
-  {
-    category: "WINDOWS",
-    details: [
-      "Timber members",
-      "Grazed timber members",
-      "Bol",
-      "Full metallic window",
-      "Grazed steel casement type",
-      "Aluminum steel casement type",
-    ],
-  },
-  {
-    category: "DOORS",
-    details: [
-      "Battened timber doors",
-      "Plywood & flush timber doors",
-      "Paneled timber type",
-      "Bamboo type",
-      "Full metallic door",
-      "Grazed steel casement type",
-      "Aluminum steel casement type",
-      "Double leaf steel lockable gate",
-      "Single steel sliding gate",
-    ],
-  },
-  {
-    category: "WALL FINISHING",
-    details: [
-      "Plastered with mud mortar",
-      "Plastered & rendered with mud mortar",
-      "Plastered with mud mortar, rendered with cement & sand mortar",
-      "Plastered with cement & sand mortar",
-      "Plastered & rendered with cement & sand mortar",
-      "Roughcast",
-      "Painted internally",
-      "Color washed",
-    ],
-  },
-  {
-    category: "CEILING",
-    details: [
-      "Unlined",
-      "Tent",
-      "Bamboo matt ceiling",
-      "Plywood panels & boards",
-      "Ply plastic boards & panels",
-      "Gypsum panels & boards",
-      "(tongue & groove) t& g panels & boards",
-      "Strip",
-      "Slab painted",
-    ],
-  },
-  {
-    category: "ROOF MEMBER",
-    details: ["Mono pitched", "Double pitched", "Multi pitched"],
-  },
-  {
-    category: "ROOF COVERING",
-    details: [
-      "(galvanized corrugated iron) g.c.i sheets",
-      "Versatile sheets",
-      "Modern tiles",
-      "Traditional tiles",
-      "R.C.C (reinforced cement concrete)",
-      "Tent",
-    ],
-  },
-  {
-    category: "Fittings",
-    details: ["Kitchen Cabinet", "…."],
-  },
-  {
-    category: "Condition",
-    details: [
-      "New & strong structure",
-      "Good & strong structure",
-      "Fair & strong structure",
-      "Fair & cracks",
-      "Bad & weak structure, risky",
-    ],
-  },
-  {
-    category: "Accommodation",
-    details: [
-      "Unit 1",
-      "Living room",
-      "Dinning",
-      "Kitchen",
-      "Store",
-      "Bedrooms",
-      "Shower-rooms",
-      "Bath-rooms",
-      "Office",
-      "Other",
-    ],
-  },
-  {
-    category: "PICTURES",
-    details: ["(Pictures to be added)"],
-  },
-];
+interface BuildingData {
+  house_name: string;
+  condition?: string;
+  walls?: string[];
+  windows?: string[];
+  doors?: string[];
+  wall_finishing?: string[];
+  ceiling?: string[];
+  roof_member?: string;
+  roof_covering?: string[];
+  fittings?: string[];
+  pictures?: string[];
+  accommodation_units?: string;
+  other_accommodation_unit?: string;
+  foundation?: string[];
+  flooring?: string[];
+}
 
-export default function Buildings() {
+interface BuildingsProps {
+  data: BuildingData | null | undefined;
+}
+
+export default function Buildings({ data }: BuildingsProps) {
+  if (!data) return <p>No building data available.</p>;
+
+  // Helper to render a list or show "N/A"
+  const renderList = (items?: string[]) =>
+    items && items.length > 0 ? (
+      <ul className="list-disc list-inside space-y-1">
+        {items.map((item, i) => (
+          <li key={i}>{item}</li>
+        ))}
+      </ul>
+    ) : (
+      <span>N/A</span>
+    );
+
   return (
     <div className="max-w-6xl mx-auto p-6 bg-white text-black rounded-lg shadow-md">
       <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white py-3 px-5 rounded-md text-center">
-        Building Details
+        Building Details - {data.house_name}
       </h2>
 
       <table className="min-w-full border border-gray-300 table-auto">
@@ -157,20 +51,74 @@ export default function Buildings() {
           </tr>
         </thead>
         <tbody>
-          {buildingData.map(({ category, details }, idx) => (
-            <tr key={idx} className={idx % 2 === 0 ? "bg-gray-50" : "bg-white"}>
-              <td className="border border-gray-300 px-4 py-3 align-top font-semibold w-48">
-                {category}
-              </td>
-              <td className="border border-gray-300 px-4 py-3">
-                <ul className="list-disc list-inside space-y-1">
-                  {details.map((item, i) => (
-                    <li key={i}>{item}</li>
-                  ))}
-                </ul>
-              </td>
-            </tr>
-          ))}
+          <tr className="bg-gray-50">
+            <td className="border border-gray-300 px-4 py-3 font-semibold w-48">Condition</td>
+            <td className="border border-gray-300 px-4 py-3">{data.condition ?? 'N/A'}</td>
+          </tr>
+          <tr className="bg-white">
+            <td className="border border-gray-300 px-4 py-3 font-semibold w-48">Walls</td>
+            <td className="border border-gray-300 px-4 py-3">{renderList(data.walls)}</td>
+          </tr>
+          <tr className="bg-gray-50">
+            <td className="border border-gray-300 px-4 py-3 font-semibold w-48">Windows</td>
+            <td className="border border-gray-300 px-4 py-3">{renderList(data.windows)}</td>
+          </tr>
+          <tr className="bg-white">
+            <td className="border border-gray-300 px-4 py-3 font-semibold w-48">Doors</td>
+            <td className="border border-gray-300 px-4 py-3">{renderList(data.doors)}</td>
+          </tr>
+          <tr className="bg-gray-50">
+            <td className="border border-gray-300 px-4 py-3 font-semibold w-48">Wall Finishing</td>
+            <td className="border border-gray-300 px-4 py-3">{renderList(data.wall_finishing)}</td>
+          </tr>
+          <tr className="bg-white">
+            <td className="border border-gray-300 px-4 py-3 font-semibold w-48">Ceiling</td>
+            <td className="border border-gray-300 px-4 py-3">{renderList(data.ceiling)}</td>
+          </tr>
+          <tr className="bg-gray-50">
+            <td className="border border-gray-300 px-4 py-3 font-semibold w-48">Roof Member</td>
+            <td className="border border-gray-300 px-4 py-3">{data.roof_member ?? 'N/A'}</td>
+          </tr>
+          <tr className="bg-white">
+            <td className="border border-gray-300 px-4 py-3 font-semibold w-48">Roof Covering</td>
+            <td className="border border-gray-300 px-4 py-3">{renderList(data.roof_covering)}</td>
+          </tr>
+          <tr className="bg-gray-50">
+            <td className="border border-gray-300 px-4 py-3 font-semibold w-48">Fittings</td>
+            <td className="border border-gray-300 px-4 py-3">{renderList(data.fittings)}</td>
+          </tr>
+          <tr className="bg-white">
+            <td className="border border-gray-300 px-4 py-3 font-semibold w-48">Pictures</td>
+     <td className="border border-gray-300 px-4 py-3">
+  {Array.isArray(data.pictures) &&
+    data.pictures.map((pic, idx) => (
+      <img
+        key={idx}
+        src={pic}
+        alt={`Picture ${idx + 1}`}
+        className="w-24 h-24 object-cover mb-2"
+      />
+    ))}
+</td>
+
+
+          </tr>
+          <tr className="bg-gray-50">
+            <td className="border border-gray-300 px-4 py-3 font-semibold w-48">Accommodation Units</td>
+            <td className="border border-gray-300 px-4 py-3">{data.accommodation_units ?? 'N/A'}</td>
+          </tr>
+          <tr className="bg-white">
+            <td className="border border-gray-300 px-4 py-3 font-semibold w-48">Other Accommodation Unit</td>
+            <td className="border border-gray-300 px-4 py-3">{data.other_accommodation_unit ?? 'N/A'}</td>
+          </tr>
+          <tr className="bg-gray-50">
+            <td className="border border-gray-300 px-4 py-3 font-semibold w-48">Foundation</td>
+            <td className="border border-gray-300 px-4 py-3">{renderList(data.foundation)}</td>
+          </tr>
+          <tr className="bg-white">
+            <td className="border border-gray-300 px-4 py-3 font-semibold w-48">Flooring</td>
+            <td className="border border-gray-300 px-4 py-3">{renderList(data.flooring)}</td>
+          </tr>
         </tbody>
       </table>
     </div>
