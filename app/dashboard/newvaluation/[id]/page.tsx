@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { getEvaluationDetailsById } from "@/Reporting/evaluationDetail"; // adjust path
+import { getEvaluationDetailsById } from "@/Reporting/evaluationDetail";
 
 import Instructions from "@/components/evaluation/Instructions";
 import DefinitionOfValues from "@/components/evaluation/DefinitionOfValues";
@@ -18,7 +18,7 @@ import ValuationComputationTable from "@/components/evaluation/ValuationComputat
 import Declaration from "@/components/evaluation/Declaration";
 
 export default function ValuationReport() {
-  const { id } = useParams(); // from /dashboard/newvaluation/[id]
+  const { id } = useParams();
   const evaluationId = Number(id);
 
   const [evaluationData, setEvaluationData] = useState<any>(null);
@@ -27,20 +27,21 @@ export default function ValuationReport() {
   useEffect(() => {
     async function fetchEvaluation() {
       setLoading(true);
-
       const data = await getEvaluationDetailsById(evaluationId);
       setEvaluationData(data);
-
       setLoading(false);
     }
-
-    if (evaluationId) {
-      fetchEvaluation();
-    }
+    if (evaluationId) fetchEvaluation();
   }, [evaluationId]);
 
   if (loading) return <p>Loading...</p>;
   if (!evaluationData) return <p>No evaluation data found.</p>;
+
+  // Safely extract property and owners info (adjust if your data shape differs)
+  const property = evaluationData?.property ?? null;
+  // Assuming owners is a field inside property or related somewhere
+  // Adjust according to your actual data structure
+  const owners = property?.owners ?? [];
 
   return (
     <div className="container mx-auto p-6">
@@ -59,12 +60,13 @@ export default function ValuationReport() {
       <LimitingCondition />
       <Assumptions />
       <Declaration />
-      <PropertyLocation />
-<TenureTenanciesPlot
-  landTenure={evaluationData?.landTenure ?? null}
-  owners={evaluationData?.properties?.owners ?? null}
-/>
 
+      <PropertyLocation property={evaluationData?.property ?? null }/>
+
+      <TenureTenanciesPlot
+        landTenure={evaluationData?.landTenure ?? null}
+        owners={owners?.properties ?? null}
+      />
 
       <ServiceSiteWorks siteWorks={evaluationData?.siteWorks ?? null} />
       <Buildings data={evaluationData?.building ?? null} />
