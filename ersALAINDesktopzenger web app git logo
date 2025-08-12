@@ -1,0 +1,107 @@
+[33mcommit 072407fe3b40800cf49e195faf5914c8cd5381fa[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32malain-dev[m[33m)[m
+Merge: 10402c2 c0eab6f
+Author: Engineer  NIGANZE Alain <106992663+niganze@users.noreply.github.com>
+Date:   Thu Jul 3 14:45:56 2025 +0200
+
+    Merge pull request #5 from niganze/tanjiro
+    
+    feat: rich-text-editor
+
+[33mcommit c0eab6fd768f85942dc2aa7f85787585506f9505[m
+Author: frérot <149209283+frer0t@users.noreply.github.com>
+Date:   Thu Jul 3 14:36:04 2025 +0200
+
+    feat: rich-text-editor
+
+[33mcommit 10402c26b11fa8fa7872852aa8c4090edad19efd[m[33m ([m[1;31morigin/alain-dev[m[33m, [m[1;32mmain[m[33m)[m
+Merge: 9bcfba0 65d1156
+Author: frérot <me@frerot.dev>
+Date:   Thu Jul 3 12:19:18 2025 +0200
+
+    Merge pull request #4 from niganze/alain-dev
+    
+    edit templete/ new
+
+[33mcommit 65d11562c0960f2cbb3100055112299ddec3bd1d[m
+Author: niganze <niganzealain@gmail.com>
+Date:   Thu Jul 3 11:44:51 2025 +0200
+
+    edit templete/ new
+
+[33mcommit 9bcfba05c541558902d3bfe4c267c1794e949909[m
+Author: frérot <149209283+frer0t@users.noreply.github.com>
+Date:   Thu Jul 3 09:41:17 2025 +0200
+
+    fix: search on valution page
+
+[33mcommit 83bcf551114d8f115034ef80cf585fa542d6c763[m
+Author: frérot <149209283+frer0t@users.noreply.github.com>
+Date:   Wed Jul 2 22:37:29 2025 +0200
+
+    change: impro valuation page
+
+[33mcommit 70af5373f497f45d022bd1dbbfa89a4aefa28e08[m
+Author: frérot <149209283+frer0t@users.noreply.github.com>
+Date:   Wed Jul 2 22:06:20 2025 +0200
+
+    change: improve dashboard page and include rest supabase types
+
+[33mcommit dce9b85689d8df0ed4d1af343a29a18817a866ff[m
+Merge: e1edc2f 23cd0a0
+Author: Engineer  NIGANZE Alain <106992663+niganze@users.noreply.github.com>
+Date:   Wed Jul 2 21:25:04 2025 +0200
+
+    Merge pull request #2 from niganze/alain-dev
+    
+    error  fixing
+
+[33mcommit 23cd0a0c88435b0b8c115904dc29afbbf3900447[m
+Author: niganze <niganzealain@gmail.com>
+Date:   Wed Jul 2 21:21:04 2025 +0200
+
+    error  fixing
+
+[33mcommit e1edc2f441daf16b1d0bf3914c4c7c37c2208fb6[m
+Merge: 527ea34 915fd5d
+Author: Engineer  NIGANZE Alain <106992663+niganze@users.noreply.github.com>
+Date:   Tue Jul 1 21:24:47 2025 +0200
+
+    Merge pull request #1 from niganze/alain-dev
+    
+    fixing loader feature
+
+[33mcommit 915fd5de7622ca91eb131dffe514c9cf908ea516[m
+Author: niganze <niganzealain@gmail.com>
+Date:   Tue Jul 1 21:19:33 2025 +0200
+
+    fixing loader feature
+
+[33mcommit 527ea3424e59a2fd5b603c31642a9edfcf163931[m
+Author: niganze <niganzealain@gmail.com>
+Date:   Sun Jun 29 23:45:08 2025 +0200
+
+    adding the subscrptions
+
+[33mcommit 86a54e74e46f1131db5b8c8bc8eed9555cb2a8e0[m
+Author: niganze <niganzealain@gmail.com>
+Date:   Sun Jun 29 22:41:58 2025 +0200
+
+    adding the all react editor
+
+[33mcommit 21ba0b26836d3ee95815e65fbaf52c24a3bdb7c2[m
+Author: niganze <niganzealain@gmail.com>
+Date:   Sun Jun 29 19:29:59 2025 +0200
+
+    adding templete  design
+
+[33mcommit e5d024690efb0f7e4a62a5ea19bd443489caf962[m
+Author: niganze <niganzealain@gmail.com>
+Date:   Sun Jun 29 01:15:34 2025 +0200
+
+    fix error in the layout
+
+[33mcommit 84a363396f9c0b3f308f703a84b33cebdfe21f56[m
+Author: niganze <niganzealain@gmail.com>
+Date:   Sat Jun 28 17:22:01 2025 +0200
+
+    first commit
