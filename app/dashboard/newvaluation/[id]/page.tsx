@@ -60,7 +60,12 @@ export default function ValuationReport() {
       <Assumptions />
       <Declaration />
       <PropertyLocation />
-      <TenureTenanciesPlot />
+<TenureTenanciesPlot
+  landTenure={evaluationData?.landTenure ?? null}
+  owners={evaluationData?.properties?.owners ?? null}
+/>
+
+
       <ServiceSiteWorks siteWorks={evaluationData?.siteWorks ?? null} />
       <Buildings data={evaluationData?.building ?? null} />
       <GeneralRemarks />

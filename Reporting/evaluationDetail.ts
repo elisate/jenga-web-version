@@ -9,6 +9,7 @@ export async function getEvaluationData() {
       evaluation_data_id,
       property_id,
       created_at,
+     
       building:building_id ( * ),
       landTenure:landtenure_id ( * ),
       siteWorks:site_works_id ( * ),
@@ -38,6 +39,7 @@ export async function getEvaluationDetailsById(evaluation_data_id: string | numb
       evaluation_data_id,
       property_id,
       created_at,
+   
       building:building_id ( * ),
       landTenure:landtenure_id ( * ),
       siteWorks:site_works_id ( * ),

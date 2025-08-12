@@ -7,65 +7,76 @@ interface Owner {
   idNumber: string;
 }
 
-interface Field {
-  label: string;
-  name: string;
-  placeholder: string;
+interface LandTenureData {
+  tenure: string;
+  years: string;
+  term: string;
+  owners: Owner[];
+  encumbrances: string;
+  user: string;
+  current: string;
+  nla: string;
+  occupancy: string;
+  plotSize: string;
+  plotShape: string;
+  nlaMap: File | null;
+  masterPlan: File | null;
+  permittedUses: string[];
+  prohibitedUses: string[];
+  lotSize: string[];
 }
 
-const TenureTenanciesPlot: React.FC = () => {
-  // Default data (replace with API/DB fetch)
-  const [formData, setFormData] = useState({
-    tenure: "Emphyteutic Lease",
-    years: "43",
-    term: "02/12/2023",
-    owners: [
-      { name: "MUHAWENIMANA JOSELINE", share: "50%", idNumber: "1 198570102014070" },
-      { name: "NIYITEGEKA DAMASCENE", share: "50%", idNumber: "1 198580102018020" },
-    ] as Owner[],
-    encumbrances: "Mortgage",
-    user: "Residential",
-    current: "Residential",
-    nla: "T1-Road reserve size in sqm 122 & R1A-Low density residential densification zone size in sqm 854.",
-    occupancy: "Owner",
-    plotSize: "976",
-    plotShape: "Rectangular",
-    nlaMap: null as File | null,
-    masterPlan: null as File | null,
-    permittedUses: [
-      "Row housing",
-      "Low Rise apartments",
-      "Home Occupation",
-      "Accessory Residential Units",
-    ],
-    prohibitedUses: [
-      "Major Industrial uses",
-      "Major infrastructure",
-      "Single Family Residential Developments",
-    ],
-    lotSize: [
-      "Rowhouses: Max 200 m2",
-      "Low Rise Apartments: N/A (shall be allowed, provided the development meets the minimum density requirement as per point 3.0)",
-    ],
-  });
+interface TenureTenanciesPlotProps {
+  landTenure: Partial<LandTenureData> | null;
+  owners?: Owner[] | null;
+}
 
-  const basicFields: Field[] = [
-    { label: "Tenure", name: "tenure", placeholder: "Enter tenure" },
-    { label: "Years", name: "years", placeholder: "Enter years" },
-    { label: "Term Start", name: "term", placeholder: "Enter start date" },
-    { label: "Encumbrances", name: "encumbrances", placeholder: "Enter encumbrances" },
-    { label: "User (Land title)", name: "user", placeholder: "Enter land title" },
-    { label: "Current Use", name: "current", placeholder: "Enter current use" },
-    { label: "NLA Details", name: "nla", placeholder: "Enter NLA details" },
-    { label: "Occupancy", name: "occupancy", placeholder: "Enter occupancy type" },
-    { label: "Plot Size (Sqm)", name: "plotSize", placeholder: "Enter plot size" },
-    { label: "Plot Shape", name: "plotShape", placeholder: "Enter plot shape" },
+const TenureTenanciesPlot: React.FC<TenureTenanciesPlotProps> = ({
+  landTenure,
+  owners,
+}) => {
+  const [formData, setFormData] = useState<LandTenureData>({
+  tenure: landTenure?.tenure || "",
+  years: landTenure?.tenure_years?.toString() || "",
+  term: landTenure?.tenure_start_date || "",
+  owners: owners || [],
+  encumbrances: landTenure?.encumbrances || "",
+  user: landTenure?.land_title_use || "",
+  current: landTenure?.land_current_use || "",
+  nla: landTenure?.nla_zoning || "",
+  occupancy: landTenure?.occupancy || "",
+  plotSize: landTenure?.plot_size_sqm?.toString() || "",
+  plotShape: landTenure?.plot_shape || "",
+  nlaMap: landTenure?.map_from_nla ? (landTenure.map_from_nla as File) : null,
+  masterPlan: Array.isArray(landTenure?.map_from_masterplan) && landTenure.map_from_masterplan.length > 0 
+    ? (landTenure.map_from_masterplan[0] as File) 
+    : null,
+  permittedUses: landTenure?.permitted_uses ? landTenure.permitted_uses.split(",") : [],
+  prohibitedUses: landTenure?.prohibited_uses ? landTenure.prohibited_uses.split(",") : [],
+  lotSize: landTenure?.lot_size_notes ? landTenure.lot_size_notes.split(",") : [],
+});
+
+
+  const basicFields = [
+    { label: "Tenure", name: "tenure" },
+    { label: "Years", name: "years" },
+    { label: "Term Start", name: "term" },
+    { label: "Encumbrances", name: "encumbrances" },
+    { label: "User (Land title)", name: "user" },
+    { label: "Current Use", name: "current" },
+    { label: "NLA Details", name: "nla" },
+    { label: "Occupancy", name: "occupancy" },
+    { label: "Plot Size (Sqm)", name: "plotSize" },
+    { label: "Plot Shape", name: "plotShape" },
   ];
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, files } = e.target;
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    name: string
+  ) => {
+    const { value, files } = e.target;
     if (files && files.length > 0) {
-      setFormData((prev) => ({ ...prev, [name]: files[0] }));
+      setFormData((prev) => ({ ...prev, [name]: files[0] as File }));
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
@@ -73,7 +84,7 @@ const TenureTenanciesPlot: React.FC = () => {
 
   const handleOwnerChange = (index: number, key: keyof Owner, value: string) => {
     const updatedOwners = [...formData.owners];
-    updatedOwners[index][key] = value;
+    updatedOwners[index] = { ...updatedOwners[index], [key]: value };
     setFormData((prev) => ({ ...prev, owners: updatedOwners }));
   };
 
@@ -96,10 +107,9 @@ const TenureTenanciesPlot: React.FC = () => {
                 <td className="border border-gray-300 p-2">
                   <input
                     type="text"
-                    name={field.name}
                     value={(formData as any)[field.name]}
-                    onChange={handleChange}
-                    placeholder={field.placeholder}
+                    onChange={(e) => handleChange(e, field.name)}
+                    placeholder={`Enter ${field.label}`}
                     className="w-full border p-1 rounded"
                   />
                 </td>
@@ -151,12 +161,13 @@ const TenureTenanciesPlot: React.FC = () => {
         </table>
 
         {/* Image Uploads */}
-        <h3 className="font-semibold mb-2">Extracted from Rwanda National Land Authority</h3>
+        <h3 className="font-semibold mb-2">
+          Extracted from Rwanda National Land Authority
+        </h3>
         <input
           type="file"
-          name="nlaMap"
           accept="image/*"
-          onChange={handleChange}
+          onChange={(e) => handleChange(e, "nlaMap")}
           className="border p-1 rounded mb-4 w-full"
         />
         {formData.nlaMap && (
@@ -170,9 +181,8 @@ const TenureTenanciesPlot: React.FC = () => {
         <h3 className="font-semibold mt-4 mb-2">Master Plan Extract</h3>
         <input
           type="file"
-          name="masterPlan"
           accept="image/*"
-          onChange={handleChange}
+          onChange={(e) => handleChange(e, "masterPlan")}
           className="border p-1 rounded mb-4 w-full"
         />
         {formData.masterPlan && (
@@ -184,28 +194,40 @@ const TenureTenanciesPlot: React.FC = () => {
         )}
 
         {/* Permitted Uses */}
-        <h3 className="font-semibold mt-4 mb-2">Permitted Uses</h3>
-        <ul className="list-disc ml-6">
-          {formData.permittedUses.map((use, i) => (
-            <li key={i}>{use}</li>
-          ))}
-        </ul>
+        {formData.permittedUses.length > 0 && (
+          <>
+            <h3 className="font-semibold mt-4 mb-2">Permitted Uses</h3>
+            <ul className="list-disc ml-6">
+              {formData.permittedUses.map((use, i) => (
+                <li key={i}>{use}</li>
+              ))}
+            </ul>
+          </>
+        )}
 
         {/* Prohibited Uses */}
-        <h3 className="font-semibold mt-4 mb-2">Prohibited Uses</h3>
-        <ul className="list-disc ml-6 text-red-600">
-          {formData.prohibitedUses.map((use, i) => (
-            <li key={i}>{use}</li>
-          ))}
-        </ul>
+        {formData.prohibitedUses.length > 0 && (
+          <>
+            <h3 className="font-semibold mt-4 mb-2">Prohibited Uses</h3>
+            <ul className="list-disc ml-6 text-red-600">
+              {formData.prohibitedUses.map((use, i) => (
+                <li key={i}>{use}</li>
+              ))}
+            </ul>
+          </>
+        )}
 
         {/* Lot Size */}
-        <h3 className="font-semibold mt-4 mb-2">Lot Size</h3>
-        <ul className="list-disc ml-6">
-          {formData.lotSize.map((size, i) => (
-            <li key={i}>{size}</li>
-          ))}
-        </ul>
+        {formData.lotSize.length > 0 && (
+          <>
+            <h3 className="font-semibold mt-4 mb-2">Lot Size</h3>
+            <ul className="list-disc ml-6">
+              {formData.lotSize.map((size, i) => (
+                <li key={i}>{size}</li>
+              ))}
+            </ul>
+          </>
+        )}
       </div>
     </div>
   );
