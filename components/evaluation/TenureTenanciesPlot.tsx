@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 
 interface Owner {
   name: string;
@@ -9,53 +9,62 @@ interface Owner {
 
 interface LandTenureData {
   tenure: string;
-  years: string;
-  term: string;
-  owners: Owner[];
+  tenure_years?: number;
+  tenure_start_date?: string;
   encumbrances: string;
-  user: string;
-  current: string;
-  nla: string;
+  land_title_use: string;
+  land_current_use: string;
+  nla_zoning: string;
   occupancy: string;
-  plotSize: string;
-  plotShape: string;
-  nlaMap: File | null;
-  masterPlan: File | null;
-  permittedUses: string[];
-  prohibitedUses: string[];
-  lotSize: string[];
+  plot_size_sqm?: number;
+  plot_shape: string;
+  map_from_nla?: File | null;
+  map_from_masterplan?: File[] | null;
+  permitted_uses: string;
+  prohibited_uses: string;
+  lot_size_notes: string;
 }
 
 interface TenureTenanciesPlotProps {
   landTenure: Partial<LandTenureData> | null;
-  owners?: Owner[] | null;
+  owners: Owner[] | null;
 }
 
 const TenureTenanciesPlot: React.FC<TenureTenanciesPlotProps> = ({
   landTenure,
   owners,
 }) => {
-  const [formData, setFormData] = useState<LandTenureData>({
-  tenure: landTenure?.tenure || "",
-  years: landTenure?.tenure_years?.toString() || "",
-  term: landTenure?.tenure_start_date || "",
-  owners: owners || [],
-  encumbrances: landTenure?.encumbrances || "",
-  user: landTenure?.land_title_use || "",
-  current: landTenure?.land_current_use || "",
-  nla: landTenure?.nla_zoning || "",
-  occupancy: landTenure?.occupancy || "",
-  plotSize: landTenure?.plot_size_sqm?.toString() || "",
-  plotShape: landTenure?.plot_shape || "",
-  nlaMap: landTenure?.map_from_nla ? (landTenure.map_from_nla as File) : null,
-  masterPlan: Array.isArray(landTenure?.map_from_masterplan) && landTenure.map_from_masterplan.length > 0 
-    ? (landTenure.map_from_masterplan[0] as File) 
-    : null,
-  permittedUses: landTenure?.permitted_uses ? landTenure.permitted_uses.split(",") : [],
-  prohibitedUses: landTenure?.prohibited_uses ? landTenure.prohibited_uses.split(",") : [],
-  lotSize: landTenure?.lot_size_notes ? landTenure.lot_size_notes.split(",") : [],
-});
+  // Defensive: if owners is null, fallback to empty array
+  const parsedOwners = useMemo(() => owners ?? [], [owners]);
 
+  const [formData, setFormData] = useState({
+    tenure: landTenure?.tenure || "",
+    years: landTenure?.tenure_years?.toString() || "",
+    term: landTenure?.tenure_start_date || "",
+    owners: parsedOwners,
+    encumbrances: landTenure?.encumbrances || "",
+    user: landTenure?.land_title_use || "",
+    current: landTenure?.land_current_use || "",
+    nla: landTenure?.nla_zoning || "",
+    occupancy: landTenure?.occupancy || "",
+    plotSize: landTenure?.plot_size_sqm?.toString() || "",
+    plotShape: landTenure?.plot_shape || "",
+    nlaMap: landTenure?.map_from_nla || null,
+    masterPlan:
+      Array.isArray(landTenure?.map_from_masterplan) &&
+      landTenure.map_from_masterplan.length > 0
+        ? landTenure.map_from_masterplan[0]
+        : null,
+    permittedUses: landTenure?.permitted_uses
+      ? landTenure.permitted_uses.split(",")
+      : [],
+    prohibitedUses: landTenure?.prohibited_uses
+      ? landTenure.prohibited_uses.split(",")
+      : [],
+    lotSize: landTenure?.lot_size_notes
+      ? landTenure.lot_size_notes.split(",")
+      : [],
+  });
 
   const basicFields = [
     { label: "Tenure", name: "tenure" },
@@ -76,13 +85,17 @@ const TenureTenanciesPlot: React.FC<TenureTenanciesPlotProps> = ({
   ) => {
     const { value, files } = e.target;
     if (files && files.length > 0) {
-      setFormData((prev) => ({ ...prev, [name]: files[0] as File }));
+      setFormData((prev) => ({ ...prev, [name]: files[0] }));
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
   };
 
-  const handleOwnerChange = (index: number, key: keyof Owner, value: string) => {
+  const handleOwnerChange = (
+    index: number,
+    key: keyof Owner,
+    value: string
+  ) => {
     const updatedOwners = [...formData.owners];
     updatedOwners[index] = { ...updatedOwners[index], [key]: value };
     setFormData((prev) => ({ ...prev, owners: updatedOwners }));
@@ -90,7 +103,6 @@ const TenureTenanciesPlot: React.FC<TenureTenanciesPlotProps> = ({
 
   return (
     <div className="border border-gray-300 rounded-md overflow-hidden mb-8">
-      {/* Section Title */}
       <div className="bg-gradient-to-r from-violet-600 to-purple-600 text-white px-4 py-2 font-bold text-lg">
         VII. TENURE, TENANCIES & PLOT
       </div>
@@ -135,7 +147,9 @@ const TenureTenanciesPlot: React.FC<TenureTenanciesPlotProps> = ({
                   <input
                     type="text"
                     value={owner.name}
-                    onChange={(e) => handleOwnerChange(idx, "name", e.target.value)}
+                    onChange={(e) =>
+                      handleOwnerChange(idx, "name", e.target.value)
+                    }
                     className="w-full border p-1 rounded"
                   />
                 </td>
@@ -143,7 +157,9 @@ const TenureTenanciesPlot: React.FC<TenureTenanciesPlotProps> = ({
                   <input
                     type="text"
                     value={owner.share}
-                    onChange={(e) => handleOwnerChange(idx, "share", e.target.value)}
+                    onChange={(e) =>
+                      handleOwnerChange(idx, "share", e.target.value)
+                    }
                     className="w-full border p-1 rounded"
                   />
                 </td>
@@ -151,7 +167,9 @@ const TenureTenanciesPlot: React.FC<TenureTenanciesPlotProps> = ({
                   <input
                     type="text"
                     value={owner.idNumber}
-                    onChange={(e) => handleOwnerChange(idx, "idNumber", e.target.value)}
+                    onChange={(e) =>
+                      handleOwnerChange(idx, "idNumber", e.target.value)
+                    }
                     className="w-full border p-1 rounded"
                   />
                 </td>
