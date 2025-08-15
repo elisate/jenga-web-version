@@ -1,4 +1,8 @@
-import React from "react";
+"use client";
+
+import React, { useEffect } from "react";
+import { useEditor, EditorContent } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
 
 interface Definition {
   id: string;
@@ -27,28 +31,33 @@ const DefinitionOfValues: React.FC<DefinitionOfValuesProps> = ({ value, onChange
     },
   ];
 
+  const initialContent = `
+    <h2 style="font-weight: bold; font-size: 24px;">II. DEFINITION OF VALUES</h2>
+    ${definitions
+      .map(
+        (item) => `
+      <h3 style="font-weight: bold; font-size: 20px;">${item.id}. ${item.title}:</h3>
+      <p style="font-size: 16px;">${item.description}</p>
+    `
+      )
+      .join("")}
+  `;
+
+  const editor = useEditor({
+    extensions: [StarterKit],
+    content: initialContent,
+    editable: false // make read-only
+  });
+
+  // Push initial content to parent on mount
+  useEffect(() => {
+    onChange(initialContent);
+  }, [initialContent, onChange]);
+
   return (
     <div className="mb-8 border border-gray-300 rounded-md overflow-hidden">
-      <div className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white px-4 py-2 font-bold text-lg">
-        II. DEFINITION OF VALUES
-      </div>
-
-      <div className="bg-white text-black p-4 space-y-4">
-        {definitions.map((item) => (
-          <div key={item.id}>
-            <h3 className="font-semibold mb-1">
-              {item.id}. {item.title}:
-            </h3>
-            <p className="text-sm">{item.description}</p>
-          </div>
-        ))}
-
-        <textarea
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-full border rounded p-2 mt-4"
-          placeholder="Add your notes or observations here..."
-        />
+      <div className="bg-white text-black p-4">
+        <EditorContent editor={editor} />
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 type TableRow = (string | number)[];
 
@@ -17,27 +17,44 @@ interface ValuationTableProps {
 }
 
 const ValuationTable: React.FC<ValuationTableProps> = ({ value, onChange }) => {
-  const [data, setData] = useState<TableRow[]>(
-    value?.main || [
-      ["Main house (Main area)", "sqm", "", 248.99, 250000, 62247500, "6%", 58512650],
-      ["Main house (Porch area)", "sqm", "", 55.17, 250000, 13792500, "6%", 12964950],
-      ["Annex house (area)", "sqm", "", 15.12, 200000, 3024000, "6%", 2842560],
-      ["Gate house (area)", "sqm", "", 6.25, 170000, 1062500, "6%", 998750],
-      ["Bungalow house (area)", "sqm", "", 12.58, 200000, 2516000, "6%", 2365040],
-    ]
-  );
+  const [data, setData] = useState<TableRow[]>(value?.main || [
+    ["Main house (Main area)", "sqm", "", 248.99, 250000, 0, "6%", 0],
+    ["Main house (Porch area)", "sqm", "", 55.17, 250000, 0, "6%", 0],
+    ["Annex house (area)", "sqm", "", 15.12, 200000, 0, "6%", 0],
+    ["Gate house (area)", "sqm", "", 6.25, 170000, 0, "6%", 0],
+    ["Bungalow house (area)", "sqm", "", 12.58, 200000, 0, "6%", 0],
+  ]);
 
   const [landValueRow, setLandValueRow] = useState<TableRow>(
-    value?.land || ["Land value", "sqm", "", 1107, 225000, "", "", 249075000]
+    value?.land || ["Land value", "sqm", "", 1107, 225000, 0, "", 0]
   );
 
-  const [summaryRows, setSummaryRows] = useState<TableRow[]>(
-    value?.summary || [
-      ["Open Market Value", "", "", "", "", "", "", 344591350],
-      ["Forced Sale Value @ 70%", "", "", "", "", "", "", 241213945],
-      ["Insurance Value", "", "", "", "", "", "", 101902500],
-    ]
-  );
+  const [summaryRows, setSummaryRows] = useState<TableRow[]>(value?.summary || [
+    ["Open Market Value", "", "", "", "", "", "", 0],
+    ["Forced Sale Value @ 70%", "", "", "", "", "", "", 0],
+    ["Insurance Value", "", "", "", "", "", "", 0],
+  ]);
+
+  // Auto compute replacement cost and value in Rwf
+  const computeRow = (row: TableRow): TableRow => {
+    const area = Number(row[3]) || 0;
+    const rate = Number(row[4]) || 0;
+    const depRate = parseFloat(String(row[6]).replace("%", "")) || 0;
+
+    const replacementCost = area * rate;
+    const valueInRwf = replacementCost * (1 - depRate / 100);
+
+    return [
+      row[0],
+      row[1],
+      row[2],
+      area,
+      rate,
+      replacementCost,
+      row[6],
+      valueInRwf,
+    ];
+  };
 
   const handleChange = (
     val: string | number,
@@ -48,20 +65,39 @@ const ValuationTable: React.FC<ValuationTableProps> = ({ value, onChange }) => {
     if (table === "main") {
       const updated = [...data];
       updated[rowIndex][colIndex] = val;
+      updated[rowIndex] = computeRow(updated[rowIndex]);
       setData(updated);
       onChange?.({ main: updated, land: landValueRow, summary: summaryRows });
-    } else if (table === "land") {
-      const updated = [...landValueRow];
-      updated[colIndex] = val;
-      setLandValueRow(updated);
-      onChange?.({ main: data, land: updated, summary: summaryRows });
-    } else {
-      const updated = [...summaryRows];
-      updated[rowIndex][colIndex] = val;
-      setSummaryRows(updated);
-      onChange?.({ main: data, land: landValueRow, summary: updated });
-    }
+    }else if (table === "land") {
+    const updated = computeRow([
+        ...landValueRow.slice(0, colIndex),
+        val,
+        ...landValueRow.slice(colIndex + 1)
+    ]);
+    setLandValueRow(updated);
+    onChange?.({ main: data, land: updated, summary: summaryRows });
+}
+
   };
+
+  // Compute summary automatically
+  useEffect(() => {
+    const buildingTotal = data.reduce((acc, row) => acc + Number(row[7] || 0), 0);
+    const landValue = Number(landValueRow[7] || 0);
+
+    const openMarket = buildingTotal + landValue;
+    const forcedSale = openMarket * 0.7;
+    const insuranceValue = buildingTotal * 0.3; // example fraction
+
+    const updatedSummary = [
+      ["Open Market Value", "", "", "", "", "", "", openMarket],
+      ["Forced Sale Value @ 70%", "", "", "", "", "", "", forcedSale],
+      ["Insurance Value", "", "", "", "", "", "", insuranceValue],
+    ];
+
+    setSummaryRows(updatedSummary);
+    onChange?.({ main: data, land: landValueRow, summary: updatedSummary });
+  }, [data, landValueRow]);
 
   const renderRow = (
     row: TableRow,
@@ -76,19 +112,23 @@ const ValuationTable: React.FC<ValuationTableProps> = ({ value, onChange }) => {
             colIndex > 2 ? "text-right" : "text-left"
           }`}
         >
-          <input
-            type={colIndex > 2 ? "number" : "text"}
-            value={cell}
-            onChange={(e) =>
-              handleChange(
-                colIndex > 2 ? parseFloat(e.target.value) || 0 : e.target.value,
-                rowIndex,
-                colIndex,
-                table
-              )
-            }
-            className="w-full bg-transparent outline-none"
-          />
+          {table === "summary" || colIndex === 5 || colIndex === 7 ? (
+            <span>{cell.toLocaleString()}</span>
+          ) : (
+            <input
+              type={colIndex > 2 ? "number" : "text"}
+              value={cell}
+              onChange={(e) =>
+                handleChange(
+                  colIndex > 2 ? parseFloat(e.target.value) || 0 : e.target.value,
+                  rowIndex,
+                  colIndex,
+                  table
+                )
+              }
+              className="w-full bg-transparent outline-none"
+            />
+          )}
         </td>
       ))}
     </tr>
@@ -99,7 +139,6 @@ const ValuationTable: React.FC<ValuationTableProps> = ({ value, onChange }) => {
       <h2 className="text-xl font-bold mb-4">
         XI. VALUATION COMPUTATION TABLE
       </h2>
-
       <div className="overflow-x-auto">
         <table className="min-w-full border border-gray-400 border-collapse text-sm">
           <thead>
@@ -139,20 +178,25 @@ const ValuationTable: React.FC<ValuationTableProps> = ({ value, onChange }) => {
 
             <tr className="bg-gray-50 font-bold">
               <td className="border border-gray-400 px-3 py-2" colSpan={3}>
-                Sub-total I
+                LAND
               </td>
-              <td className="border border-gray-400 px-3 py-2 text-right">338</td>
-              <td className="border border-gray-400 px-3 py-2"></td>
               <td className="border border-gray-400 px-3 py-2 text-right">
-                82,642,500
+                {landValueRow[3]}
               </td>
-              <td className="border border-gray-400 px-3 py-2"></td>
               <td className="border border-gray-400 px-3 py-2 text-right">
-                77,683,950
+                {landValueRow[4]}
+              </td>
+              <td className="border border-gray-400 px-3 py-2 text-right">
+                {landValueRow[5]}
+              </td>
+              <td className="border border-gray-400 px-3 py-2 text-right">
+                {landValueRow[6]}
+              </td>
+              <td className="border border-gray-400 px-3 py-2 text-right">
+                {landValueRow[7]}
               </td>
             </tr>
 
-            {renderRow(landValueRow, 0, "land")}
             {summaryRows.map((row, i) => renderRow(row, i, "summary"))}
           </tbody>
         </table>

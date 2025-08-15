@@ -1,4 +1,8 @@
-import React from "react";
+"use client";
+
+import React, { useEffect } from "react";
+import { useEditor, EditorContent } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
 
 interface Point {
   id: string;
@@ -34,29 +38,32 @@ const LimitingCondition: React.FC<LimitingConditionProps> = ({ value, onChange }
     },
   ];
 
-  return (
-    <div className="space-y-8">
-      <div className="mb-8 border border-gray-300 rounded-md overflow-hidden">
-        <div className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white px-4 py-2 font-bold text-lg">
-          IV. LIMITING CONDITIONS IN THIS VALUATION
-        </div>
-        <div className="bg-white text-black p-4">
-          <ul className="list-disc list-inside space-y-2 text-sm">
-            {limitingConditions.map((item) => (
-              <li key={item.id}>
-                <span className="font-semibold">{item.id}.</span> {item.text}
-              </li>
-            ))}
-          </ul>
+  const initialContent = `
+    <h2 style="font-weight:bold; font-size:24px;">IV. LIMITING CONDITIONS IN THIS VALUATION</h2>
+    <ul style="margin-left:20px; font-size:16px;">
+      ${limitingConditions
+        .map(
+          (item) => `<li><span style="font-weight:bold;">${item.id}.</span> ${item.text}</li>`
+        )
+        .join("")}
+    </ul>
+  `;
 
-          {/* Editable field */}
-          <textarea
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            className="w-full border rounded p-2 mt-4"
-            placeholder="Add any additional limiting conditions..."
-          />
-        </div>
+  const editor = useEditor({
+    extensions: [StarterKit],
+    content: initialContent,
+    editable: false, // Make read-only
+  });
+
+  // Send content to parent on mount
+  useEffect(() => {
+    onChange(initialContent);
+  }, [initialContent, onChange]);
+
+  return (
+    <div className="mb-8 border border-gray-300 rounded-md overflow-hidden">
+      <div className="bg-white text-black p-4">
+        <EditorContent editor={editor} />
       </div>
     </div>
   );

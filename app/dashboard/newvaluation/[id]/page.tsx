@@ -88,30 +88,37 @@ export default function ValuationReport() {
         value={reportData.instructions}
         onChange={(val) => setReportData((prev: any) => ({ ...prev, instructions: val }))}
       />
+
       <DefinitionOfValues
         value={reportData.definitionOfValues}
         onChange={(val) => setReportData((prev: any) => ({ ...prev, definitionOfValues: val }))}
       />
+
       <BasisOfValuation
         value={reportData.basisOfValuation}
         onChange={(val) => setReportData((prev: any) => ({ ...prev, basisOfValuation: val }))}
       />
+
       <LimitingCondition
         value={reportData.limitingCondition}
         onChange={(val) => setReportData((prev: any) => ({ ...prev, limitingCondition: val }))}
       />
+
       <Assumptions
         value={reportData.assumptions}
         onChange={(val) => setReportData((prev: any) => ({ ...prev, assumptions: val }))}
       />
+
       <Declaration
         value={reportData.declaration}
         onChange={(val) => setReportData((prev: any) => ({ ...prev, declaration: val }))}
       />
+
       <PropertyLocation
         property={reportData.property}
         onChange={(val) => setReportData((prev: any) => ({ ...prev, property: val }))}
       />
+
       <TenureTenanciesPlot
         landTenure={reportData.landTenure}
         owners={reportData.property?.owners || []}
@@ -123,18 +130,22 @@ export default function ValuationReport() {
           }))
         }
       />
+
       <ServiceSiteWorks
         siteWorks={reportData.siteWorks}
         onChange={(val) => setReportData((prev: any) => ({ ...prev, siteWorks: val }))}
       />
+
       <Buildings
         data={reportData.building}
         onChange={(val) => setReportData((prev: any) => ({ ...prev, building: val }))}
       />
+
       <GeneralRemarks
         value={reportData.generalRemarks}
         onChange={(val) => setReportData((prev: any) => ({ ...prev, generalRemarks: val }))}
       />
+
       <ValuationComputationTable
         value={reportData.valuationTable}
         onChange={(val) => setReportData((prev: any) => ({ ...prev, valuationTable: val }))}

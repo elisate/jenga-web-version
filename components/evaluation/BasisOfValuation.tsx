@@ -1,4 +1,8 @@
-import React from "react";
+"use client";
+
+import React, { useEffect } from "react";
+import { useEditor, EditorContent } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
 
 interface SubPoint {
   id: string;
@@ -49,39 +53,45 @@ const BasisOfValuation: React.FC<BasisOfValuationProps> = ({ value, onChange }) 
     },
   ];
 
+  const initialContent = `
+    <h2 style="font-weight:bold; font-size:24px;">III. BASIS OF VALUATION</h2>
+    ${basis
+      .map(
+        (item) => `
+      <h3 style="font-weight:bold; font-size:20px;">${item.id}. ${item.title}:</h3>
+      <p style="font-size:16px;">${item.description}</p>
+      ${
+        item.subPoints
+          ? `<ul style="margin-left:20px;">
+              ${item.subPoints
+                .map(
+                  (sub) =>
+                    `<li><span style="font-weight:bold;">${sub.id}.</span> ${sub.text}</li>`
+                )
+                .join("")}
+            </ul>`
+          : ""
+      }
+    `
+      )
+      .join("")}
+  `;
+
+  const editor = useEditor({
+    extensions: [StarterKit],
+    content: initialContent,
+    editable: false, // Make read-only
+  });
+
+  // Send initial content to parent on mount
+  useEffect(() => {
+    onChange(initialContent);
+  }, [initialContent, onChange]);
+
   return (
     <div className="mb-8 border border-gray-300 rounded-md overflow-hidden">
-      <div className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white px-4 py-2 font-bold text-lg">
-        III. BASIS OF VALUATION
-      </div>
-
-      <div className="bg-white text-black p-4 space-y-4">
-        {basis.map((item) => (
-          <div key={item.id}>
-            <h3 className="font-semibold mb-1">
-              {item.id}. {item.title}:
-            </h3>
-            <p className="text-sm mb-2">{item.description}</p>
-
-            {item.subPoints && (
-              <ul className="list-disc list-inside text-sm space-y-1">
-                {item.subPoints.map((sub) => (
-                  <li key={sub.id}>
-                    <span className="font-semibold">{sub.id}.</span> {sub.text}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        ))}
-
-        {/* Optional editable field */}
-        <textarea
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-full border rounded p-2 mt-4"
-          placeholder="Add your notes or observations here..."
-        />
+      <div className="bg-white text-black p-4">
+        <EditorContent editor={editor} />
       </div>
     </div>
   );

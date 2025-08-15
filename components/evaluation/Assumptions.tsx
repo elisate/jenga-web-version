@@ -1,4 +1,8 @@
-import React from "react";
+"use client";
+
+import React, { useEffect } from "react";
+import { useEditor, EditorContent } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
 
 interface Point {
   id: string;
@@ -38,31 +42,35 @@ const Assumptions: React.FC<AssumptionsProps> = ({ value, onChange }) => {
     },
   ];
 
-  return (
-    <div>
-      {/* Assumptions */}
-      <div className="mb-8 border border-gray-300 rounded-md overflow-hidden">
-        <div className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white px-4 py-2 font-bold text-lg">
-          V. ASSUMPTIONS
-        </div>
-        <div className="bg-white text-black p-4">
-          <p className="text-sm mb-3">
-            In preparing this report, unless otherwise stated, the following assumptions have been made which we shall be under no duty to verify:
-          </p>
-          <ul className="list-decimal list-inside space-y-2 text-sm">
-            {assumptions.map((item) => (
-              <li key={item.id}>{item.text}</li>
-            ))}
-          </ul>
+  const initialContent = `
+    <h2 style="font-weight:bold; font-size:24px;">V. ASSUMPTIONS</h2>
+    <p style="font-size:16px; margin-bottom:12px;">
+      In preparing this report, unless otherwise stated, the following assumptions have been made which we shall be under no duty to verify:
+    </p>
+    <ol style="margin-left:20px; font-size:16px;">
+      ${assumptions
+        .map(
+          (item) => `<li><span style="font-weight:bold;">${item.id}.</span> ${item.text}</li>`
+        )
+        .join("")}
+    </ol>
+  `;
 
-          {/* Editable field */}
-          <textarea
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            className="w-full border rounded p-2 mt-4"
-            placeholder="Add any additional assumptions or notes..."
-          />
-        </div>
+  const editor = useEditor({
+    extensions: [StarterKit],
+    content: initialContent,
+    editable: false, // Make read-only
+  });
+
+  // Send initial content to parent on mount
+  useEffect(() => {
+    onChange(initialContent);
+  }, [initialContent, onChange]);
+
+  return (
+    <div className="mb-8 border border-gray-300 rounded-md overflow-hidden">
+      <div className="bg-white text-black p-4">
+        <EditorContent editor={editor} />
       </div>
     </div>
   );

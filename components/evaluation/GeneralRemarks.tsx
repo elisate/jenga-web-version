@@ -1,6 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
+import { useEditor, EditorContent } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
 
 interface GeneralRemarksProps {
   value: string;
@@ -12,36 +14,36 @@ const generalRemarksList = [
   "The subject property enjoys all the major facilities...",
   "The value principally reflects the construction materials...",
   "We have realized through Rwanda land management and use authority...",
-  "Other..",
+  "Other...",
 ];
 
-export default function GeneralRemarks({ value, onChange }: GeneralRemarksProps) {
+const GeneralRemarks: React.FC<GeneralRemarksProps> = ({ value, onChange }) => {
+  const initialContent = value || `
+    <h2 style="font-weight:bold; font-size:24px;">X. GENERAL REMARKS</h2>
+    <ul style="margin-left:20px; font-size:16px; list-style-type:disc;">
+      ${generalRemarksList.map((remark) => `<li>${remark}</li>`).join("")}
+    </ul>
+  `;
+
+  const editor = useEditor({
+    extensions: [StarterKit],
+    content: initialContent,
+    editable: true,
+    onUpdate: ({ editor }) => {
+      onChange(editor.getHTML());
+    },
+  });
+
+  // Send initial content to parent on mount
+  useEffect(() => {
+    onChange(initialContent);
+  }, [initialContent, onChange]);
+
   return (
-    <section className="max-w-4xl mx-auto p-6 bg-white text-black rounded-lg shadow-md">
-      <h2 className="text-xl font-bold mb-4 bg-gradient-to-r from-violet-600 to-purple-600 text-white py-2 px-4 rounded">
-        X. GENERAL REMARKS
-      </h2>
-
-      <ul className="mb-4">
-        {generalRemarksList.map((remark, idx) => (
-          <li
-            key={idx}
-            className={`cursor-pointer p-2 rounded ${
-              value === remark ? "bg-blue-100 font-semibold" : "hover:bg-gray-100"
-            }`}
-            onClick={() => onChange(remark)}
-          >
-            {remark}
-          </li>
-        ))}
-      </ul>
-
-      <textarea
-        className="w-full border rounded p-2"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder="Add any other remarks..."
-      />
-    </section>
+    <div className="mb-8 border border-gray-300 rounded-md overflow-hidden bg-white text-black p-4">
+      <EditorContent editor={editor} />
+    </div>
   );
-}
+};
+
+export default GeneralRemarks;
