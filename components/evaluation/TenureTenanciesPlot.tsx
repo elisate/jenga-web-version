@@ -28,13 +28,14 @@ interface LandTenureData {
 interface TenureTenanciesPlotProps {
   landTenure: Partial<LandTenureData> | null;
   owners: Owner[] | null;
+  onChange?: (landTenure: Partial<LandTenureData>, owners: Owner[]) => void; // ✅ Add onChange
 }
 
 const TenureTenanciesPlot: React.FC<TenureTenanciesPlotProps> = ({
   landTenure,
   owners,
+  onChange,
 }) => {
-  // Defensive: if owners is null, fallback to empty array
   const parsedOwners = useMemo(() => owners ?? [], [owners]);
 
   const [formData, setFormData] = useState({
@@ -81,24 +82,24 @@ const TenureTenanciesPlot: React.FC<TenureTenanciesPlotProps> = ({
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement>,
-    name: string
+    name: keyof typeof formData
   ) => {
     const { value, files } = e.target;
-    if (files && files.length > 0) {
-      setFormData((prev) => ({ ...prev, [name]: files[0] }));
-    } else {
-      setFormData((prev) => ({ ...prev, [name]: value }));
-    }
+    setFormData((prev) => {
+      const updated = { ...prev, [name]: files?.[0] ?? value };
+      if (onChange) onChange(updated, updated.owners);
+      return updated;
+    });
   };
 
-  const handleOwnerChange = (
-    index: number,
-    key: keyof Owner,
-    value: string
-  ) => {
+  const handleOwnerChange = (index: number, key: keyof Owner, value: string) => {
     const updatedOwners = [...formData.owners];
     updatedOwners[index] = { ...updatedOwners[index], [key]: value };
-    setFormData((prev) => ({ ...prev, owners: updatedOwners }));
+    setFormData((prev) => {
+      const updated = { ...prev, owners: updatedOwners };
+      if (onChange) onChange(updated, updatedOwners);
+      return updated;
+    });
   };
 
   return (
@@ -108,7 +109,6 @@ const TenureTenanciesPlot: React.FC<TenureTenanciesPlotProps> = ({
       </div>
 
       <div className="bg-white text-black p-4 text-sm">
-        {/* Basic Fields */}
         <table className="w-full border-collapse mb-4">
           <tbody>
             {basicFields.map((field) => (
@@ -120,7 +120,7 @@ const TenureTenanciesPlot: React.FC<TenureTenanciesPlotProps> = ({
                   <input
                     type="text"
                     value={(formData as any)[field.name]}
-                    onChange={(e) => handleChange(e, field.name)}
+                    onChange={(e) => handleChange(e, field.name as keyof typeof formData)}
                     placeholder={`Enter ${field.label}`}
                     className="w-full border p-1 rounded"
                   />
@@ -177,75 +177,6 @@ const TenureTenanciesPlot: React.FC<TenureTenanciesPlotProps> = ({
             ))}
           </tbody>
         </table>
-
-        {/* Image Uploads */}
-        <h3 className="font-semibold mb-2">
-          Extracted from Rwanda National Land Authority
-        </h3>
-        <input
-          type="file"
-          accept="image/*"
-          onChange={(e) => handleChange(e, "nlaMap")}
-          className="border p-1 rounded mb-4 w-full"
-        />
-        {formData.nlaMap && (
-          <img
-            src={URL.createObjectURL(formData.nlaMap)}
-            alt="NLA Map"
-            className="mt-2 border rounded max-h-64"
-          />
-        )}
-
-        <h3 className="font-semibold mt-4 mb-2">Master Plan Extract</h3>
-        <input
-          type="file"
-          accept="image/*"
-          onChange={(e) => handleChange(e, "masterPlan")}
-          className="border p-1 rounded mb-4 w-full"
-        />
-        {formData.masterPlan && (
-          <img
-            src={URL.createObjectURL(formData.masterPlan)}
-            alt="Master Plan"
-            className="mt-2 border rounded max-h-64"
-          />
-        )}
-
-        {/* Permitted Uses */}
-        {formData.permittedUses.length > 0 && (
-          <>
-            <h3 className="font-semibold mt-4 mb-2">Permitted Uses</h3>
-            <ul className="list-disc ml-6">
-              {formData.permittedUses.map((use, i) => (
-                <li key={i}>{use}</li>
-              ))}
-            </ul>
-          </>
-        )}
-
-        {/* Prohibited Uses */}
-        {formData.prohibitedUses.length > 0 && (
-          <>
-            <h3 className="font-semibold mt-4 mb-2">Prohibited Uses</h3>
-            <ul className="list-disc ml-6 text-red-600">
-              {formData.prohibitedUses.map((use, i) => (
-                <li key={i}>{use}</li>
-              ))}
-            </ul>
-          </>
-        )}
-
-        {/* Lot Size */}
-        {formData.lotSize.length > 0 && (
-          <>
-            <h3 className="font-semibold mt-4 mb-2">Lot Size</h3>
-            <ul className="list-disc ml-6">
-              {formData.lotSize.map((size, i) => (
-                <li key={i}>{size}</li>
-              ))}
-            </ul>
-          </>
-        )}
       </div>
     </div>
   );

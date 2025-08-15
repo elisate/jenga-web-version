@@ -1,8 +1,12 @@
+"use client";
+import React from "react";
+
 interface ServiceSiteWorksProps {
   siteWorks: any | null;
+  onChange?: (val: any) => void; // Optional onChange prop
 }
 
-export default function ServiceSiteWorks({ siteWorks }: ServiceSiteWorksProps) {
+export default function ServiceSiteWorks({ siteWorks, onChange }: ServiceSiteWorksProps) {
   if (!siteWorks) return <p>No site works data available.</p>;
 
   const renderArray = (arr: any) =>
@@ -15,6 +19,11 @@ export default function ServiceSiteWorks({ siteWorks }: ServiceSiteWorksProps) {
     ) : (
       <em>Not specified</em>
     );
+
+  // Example: you can call onChange if needed whenever siteWorks updates
+  // React.useEffect(() => {
+  //   onChange && onChange(siteWorks);
+  // }, [siteWorks, onChange]);
 
   return (
     <div className="max-w-4xl mx-auto p-6 bg-white text-black rounded-lg shadow-lg">
@@ -89,7 +98,10 @@ export default function ServiceSiteWorks({ siteWorks }: ServiceSiteWorksProps) {
             <h4 className="font-medium text-violet-700 mb-2">Pictures</h4>
             {(() => {
               try {
-                const pics = typeof siteWorks.pictures === "string" ? JSON.parse(siteWorks.pictures) : siteWorks.pictures;
+                const pics =
+                  typeof siteWorks.pictures === "string"
+                    ? JSON.parse(siteWorks.pictures)
+                    : siteWorks.pictures;
                 return (
                   <div className="grid grid-cols-2 gap-4">
                     {pics.map((pic: string, idx: number) => (

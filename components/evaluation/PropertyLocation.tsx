@@ -13,23 +13,29 @@ interface Property {
   province?: string;
 }
 
-interface Field {
-  label: string;
-  name: string;
-  placeholder: string;
-  type: "text" | "file";
-}
-
 interface PropertyLocationProps {
   property: Partial<Property> | null;
+  onChange?: (updated: PropertyLocationState) => void; // Add this
 }
 
-const PropertyLocation: React.FC<PropertyLocationProps> = ({ property }) => {
-  const [formData, setFormData] = useState({
+interface PropertyLocationState {
+  location: string;
+  propertyUPI: string;
+  coordinates: string;
+  mapImage: File | null;
+  village: string;
+  cell: string;
+  sector: string;
+  district: string;
+  province: string;
+}
+
+const PropertyLocation: React.FC<PropertyLocationProps> = ({ property, onChange }) => {
+  const [formData, setFormData] = useState<PropertyLocationState>({
     location: property?.location || "",
     propertyUPI: property?.upi || "",
     coordinates: property?.geographical_coordinate || "",
-    mapImage: null as File | null,
+    mapImage: null,
     village: property?.village || "",
     cell: property?.cell || "",
     sector: property?.sector || "",
@@ -51,7 +57,6 @@ const PropertyLocation: React.FC<PropertyLocationProps> = ({ property }) => {
     });
   }, [property]);
 
-  // Build the full location string
   const buildFullLocation = () => {
     const parts = [
       formData.village ? `${formData.village} Village` : null,
@@ -60,49 +65,33 @@ const PropertyLocation: React.FC<PropertyLocationProps> = ({ property }) => {
       formData.district ? `${formData.district} District` : null,
     ].filter(Boolean);
     const locationStr = parts.join(", ");
-    return formData.province ? (locationStr ? `${locationStr} in ${formData.province} Province` : `${formData.province} Province`) : locationStr;
+    return formData.province
+      ? locationStr
+        ? `${locationStr} in ${formData.province} Province`
+        : `${formData.province} Province`
+      : locationStr;
   };
-
-  const fields: Field[] = [
-    // Location field is readonly and auto-generated
-    {
-      label: "Location",
-      name: "location",
-      placeholder: "Full location will appear here",
-      type: "text",
-    },
-    {
-      label: "Property UPI",
-      name: "propertyUPI",
-      placeholder: "Enter Property UPI",
-      type: "text",
-    },
-    {
-      label: "GPS Coordinates",
-      name: "coordinates",
-      placeholder: "Enter coordinates",
-      type: "text",
-    },
-    
-  ];
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, files } = e.target;
-    if (files && files.length > 0) {
-      setFormData((prev) => ({ ...prev, [name]: files[0] }));
-    } else {
-      setFormData((prev) => {
-        const updated = { ...prev, [name]: value };
-        // If any part of location changes, update location field
-        if (
-          ["village", "cell", "sector", "district", "province"].includes(name)
-        ) {
-          updated.location = buildFullLocation();
-        }
-        return updated;
-      });
-    }
+    setFormData((prev) => {
+      const updated = { ...prev, [name]: files?.[0] ?? value } as PropertyLocationState;
+
+      // Update full location if location parts changed
+      if (["village", "cell", "sector", "district", "province"].includes(name)) {
+        updated.location = buildFullLocation();
+      }
+
+      if (onChange) onChange(updated); // propagate changes
+      return updated;
+    });
   };
+
+  const fields = [
+    { label: "Location", name: "location", placeholder: "Full location will appear here", type: "text" },
+    { label: "Property UPI", name: "propertyUPI", placeholder: "Enter Property UPI", type: "text" },
+    { label: "GPS Coordinates", name: "coordinates", placeholder: "Enter coordinates", type: "text" },
+  ];
 
   return (
     <div className="border border-gray-300 rounded-md overflow-hidden mb-8">
@@ -120,17 +109,11 @@ const PropertyLocation: React.FC<PropertyLocationProps> = ({ property }) => {
                   <input
                     type={field.type}
                     name={field.name}
-                    value={
-                      field.name === "location"
-                        ? buildFullLocation() // Always show latest full location
-                        : field.type === "text"
-                        ? (formData as any)[field.name]
-                        : undefined
-                    }
+                    value={field.name === "location" ? buildFullLocation() : (formData as any)[field.name]}
                     onChange={handleChange}
                     placeholder={field.placeholder}
                     className="w-full border p-1 rounded"
-                    readOnly={field.name === "location"} // make Location readonly
+                    readOnly={field.name === "location"}
                   />
                 </td>
               </tr>
@@ -138,7 +121,6 @@ const PropertyLocation: React.FC<PropertyLocationProps> = ({ property }) => {
           </tbody>
         </table>
 
-        {/* Location Map Upload */}
         <h3 className="font-semibold mb-2">Location Map</h3>
         <div className="border border-gray-300 p-3 rounded mb-3">
           <input

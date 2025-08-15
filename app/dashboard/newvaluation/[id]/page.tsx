@@ -7,6 +7,7 @@ import { saveReport } from "@/Reporting/finalReport";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 
+// Import all your reusable sections
 import Instructions from "@/components/evaluation/Instructions";
 import DefinitionOfValues from "@/components/evaluation/DefinitionOfValues";
 import BasisOfValuation from "@/components/evaluation/BasisOfValuation";
@@ -20,7 +21,7 @@ import GeneralRemarks from "@/components/evaluation/GeneralRemarks";
 import ValuationComputationTable from "@/components/evaluation/ValuationComputationTable";
 import Declaration from "@/components/evaluation/Declaration";
 
-// Reusable PDF generator function
+// PDF generator
 const generatePdf = (evaluationId: number, data: any) => {
   const doc = new jsPDF();
   let y = 20;
@@ -33,13 +34,11 @@ const generatePdf = (evaluationId: number, data: any) => {
   doc.text(`Evaluation ID: ${evaluationId}`, 10, y);
   y += 10;
 
-  // Property Location
   if (data?.property?.location) {
     doc.text(`Property Location: ${data.property.location}`, 10, y);
     y += 10;
   }
 
-  // Owners Table
   if (data?.property?.owners?.length) {
     doc.text("Owners:", 10, y);
     y += 6;
@@ -63,44 +62,10 @@ const generatePdf = (evaluationId: number, data: any) => {
     y = (doc as any).lastAutoTable?.finalY + 10 || y + 10;
   }
 
-  // Land Tenure
   if (data?.landTenure?.tenure) {
     doc.text(`Land Tenure: ${data.landTenure.tenure}`, 10, y);
     y += 10;
   }
-
-  // Assumptions as bullet points
-  if (data?.assumptions && Array.isArray(data.assumptions) && data.assumptions.length > 0) {
-    doc.text("Assumptions:", 10, y);
-    y += 8;
-
-    data.assumptions.forEach((item: string) => {
-      if (y > 280) {
-        doc.addPage();
-        y = 20;
-      }
-      doc.text(`- ${item}`, 15, y);
-      y += 6;
-    });
-    y += 6;
-  }
-
-  // Buildings list
-  if (data?.building && Array.isArray(data.building) && data.building.length > 0) {
-    doc.text("Buildings:", 10, y);
-    y += 8;
-
-    data.building.forEach((building: any, idx: number) => {
-      if (y > 280) {
-        doc.addPage();
-        y = 20;
-      }
-      doc.text(`${idx + 1}. ${building.name || "Unnamed Building"}`, 15, y);
-      y += 6;
-    });
-  }
-
-  // Add other sections as needed...
 
   doc.save(`valuation-report-${evaluationId}.pdf`);
 };
@@ -109,7 +74,7 @@ export default function ValuationReport() {
   const { id } = useParams();
   const evaluationId = Number(id);
 
-  const [evaluationData, setEvaluationData] = useState<any>(null);
+  const [reportData, setReportData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -118,7 +83,21 @@ export default function ValuationReport() {
       setLoading(true);
       try {
         const data = await getEvaluationDetailsById(evaluationId);
-        setEvaluationData(data);
+        // initialize central state
+        setReportData({
+          instructions: "",
+          definitionOfValues: "",
+          basisOfValuation: "",
+          limitingCondition: "",
+          assumptions: [],
+          declaration: "",
+          property: data?.property || {},
+          landTenure: data?.landTenure || {},
+          siteWorks: data?.siteWorks || {},
+          building: data?.building || [],
+          generalRemarks: "",
+          valuationTable: {}
+        });
       } catch (err) {
         console.error("Error fetching evaluation details:", err);
       } finally {
@@ -129,16 +108,16 @@ export default function ValuationReport() {
   }, [evaluationId]);
 
   if (loading) return <p>Loading...</p>;
-  if (!evaluationData) return <p>No evaluation data found.</p>;
+  if (!reportData) return <p>No evaluation data found.</p>;
 
   const handleDownloadPdf = async () => {
     if (saving) return;
     setSaving(true);
     try {
-      const savedReport = await saveReport(evaluationId, evaluationData);
+      const savedReport = await saveReport(evaluationId, reportData);
       alert(`Report saved successfully! Report ID: ${savedReport.id}`);
 
-      generatePdf(evaluationId, evaluationData);
+      generatePdf(evaluationId, reportData);
     } catch (error: any) {
       alert("Failed to save report: " + (error.message || error));
     } finally {
@@ -155,27 +134,67 @@ export default function ValuationReport() {
           saving ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"
         }`}
       >
-        {saving ? "Saving..." : "Download PDF"}
+        {saving ? "Saving..." : "Save & Download PDF"}
       </button>
 
-      <Instructions />
-      <DefinitionOfValues />
-      <BasisOfValuation />
-      <LimitingCondition />
-      <Assumptions />
-      <Declaration />
-
-      <PropertyLocation property={evaluationData.property} />
-
-      <TenureTenanciesPlot
-        landTenure={evaluationData.landTenure ?? null}
-        owners={evaluationData.property?.owners ?? []}
+      <Instructions
+        value={reportData.instructions}
+        onChange={(val) => setReportData((prev: any) => ({ ...prev, instructions: val }))}
+      />
+      <DefinitionOfValues
+        value={reportData.definitionOfValues}
+        onChange={(val) => setReportData((prev: any) => ({ ...prev, definitionOfValues: val }))}
+      />
+      <BasisOfValuation
+        value={reportData.basisOfValuation}
+        onChange={(val) => setReportData((prev: any) => ({ ...prev, basisOfValuation: val }))}
+      />
+      <LimitingCondition
+        value={reportData.limitingCondition}
+        onChange={(val) => setReportData((prev: any) => ({ ...prev, limitingCondition: val }))}
+      />
+      <Assumptions
+        value={reportData.assumptions}
+        onChange={(val) => setReportData((prev: any) => ({ ...prev, assumptions: val }))}
+      />
+      <Declaration
+        value={reportData.declaration}
+        onChange={(val) => setReportData((prev: any) => ({ ...prev, declaration: val }))}
       />
 
-      <ServiceSiteWorks siteWorks={evaluationData.siteWorks ?? null} />
-      <Buildings data={evaluationData.building ?? null} />
-      <GeneralRemarks />
-      <ValuationComputationTable />
+      <PropertyLocation
+        property={reportData.property}
+        onChange={(val) => setReportData((prev: any) => ({ ...prev, property: val }))}
+      />
+
+      <TenureTenanciesPlot
+        landTenure={reportData.landTenure}
+        owners={reportData.property?.owners || []}
+        onChange={(landTenure, owners) =>
+          setReportData((prev: any) => ({
+            ...prev,
+            landTenure,
+            property: { ...prev.property, owners }
+          }))
+        }
+      />
+
+      <ServiceSiteWorks
+        siteWorks={reportData.siteWorks}
+        onChange={(val) => setReportData((prev: any) => ({ ...prev, siteWorks: val }))}
+      />
+      <Buildings
+        data={reportData.building}
+        onChange={(val) => setReportData((prev: any) => ({ ...prev, building: val }))}
+      />
+      <GeneralRemarks
+        value={reportData.generalRemarks}
+        onChange={(val) => setReportData((prev: any) => ({ ...prev, generalRemarks: val }))}
+      />
+      <ValuationComputationTable
+        value={reportData.valuationTable}
+        onChange={(val) => setReportData((prev: any) => ({ ...prev, valuationTable: val }))}
+      />
     </div>
   );
 }

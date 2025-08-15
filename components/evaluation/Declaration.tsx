@@ -1,25 +1,55 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, ChangeEvent } from "react";
 
-const Declaration: React.FC = () => {
-  const [formData, setFormData] = useState({
-    techName: "",
-    techPosition: "Technician Valuer",
-    techDate: "",
-    techSignature: null,
-    assistantName: "",
-    assistantDate: "",
-    assistantSignature: null,
-    finalSignature: null,
-  });
+// Define the shape of the form data
+export interface DeclarationData {
+  techName: string;
+  techPosition: string;
+  techDate: string;
+  techSignature: File | null;
+  techStatement: string;
+  assistantName: string;
+  assistantDate: string;
+  assistantSignature: File | null;
+  assistantStatement: string;
+  finalStatement: string;
+  finalSignature: File | null;
+}
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value, files } = e.target as HTMLInputElement;
-    if (files && files.length > 0) {
-      setFormData((prev) => ({ ...prev, [name]: files[0] }));
-    } else {
-      setFormData((prev) => ({ ...prev, [name]: value }));
+// Props for the component
+interface DeclarationProps {
+  value?: DeclarationData;
+  onChange?: (val: DeclarationData) => void;
+}
+
+const Declaration: React.FC<DeclarationProps> = ({ value, onChange }) => {
+  const [formData, setFormData] = useState<DeclarationData>(
+    value || {
+      techName: "",
+      techPosition: "Technician Valuer",
+      techDate: "",
+      techSignature: null,
+      techStatement: `Technician Valuer, hereby declare that I have personally captured and collected accurate and real information data related to the property / asset assessment, including but not limited to the following: Building dimensions; Photographs of the property; Geographic coordinates; Additional relevant data collected during the assessment.\nI hold myself responsible and confirm that the information provided is true and certain to the best of my knowledge and belief.`,
+      assistantName: "",
+      assistantDate: "",
+      assistantSignature: null,
+      assistantStatement: `I have thoroughly reviewed and cross-checked this Valuation Report prepared by HABINSHUTI EVARISTE.\nI have: Examined the property description for accuracy and completeness; verified the maps, survey plans, and location details to ensure consistency with the valuation, assessed all supporting documents (title deeds, zoning certificates, etc.) for relevance and correctness, Scrutinized the computations, adjustments, and valuation methodology applied to confirm compliance with industry standards and regulatory requirements.\nAny discrepancies or concerns identified during the review have been addressed and resolved to ensure the integrity of the final valuation. I solemnly declare that the above statements are true and correct to the best of my knowledge and belief.`,
+      finalStatement: `I, Valuer Phocas NIYONGOMBWA, hereby certify that I have no direct or indirect interest, financial or otherwise, in the property being valued or the parties involved that would compromise my impartiality and independence in conducting this property valuation. I have not been influenced by any party to the transaction, and my valuation is based solely on my professional judgment and analysis.`,
+      finalSignature: null,
     }
+  );
+
+  const handleChange = (
+    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value: val, files } = e.target as HTMLInputElement;
+    const newValue = files && files.length > 0 ? files[0] : val;
+
+    setFormData((prev) => {
+      const updated = { ...prev, [name]: newValue } as DeclarationData;
+      if (onChange) onChange(updated); // propagate change to parent
+      return updated;
+    });
   };
 
   return (
@@ -64,9 +94,9 @@ const Declaration: React.FC = () => {
               <td className="border border-gray-300 p-2">
                 <textarea
                   name="techStatement"
-                  defaultValue={`Technician Valuer, hereby declare that I have personally captured and collected accurate and real information data related to the property / asset assessment, including but not limited to the following: Building dimensions; Photographs of the property; Geographic coordinates; Additional relevant data collected during the assessment.\nI hold myself responsible and confirm that the information provided is true and certain to the best of my knowledge and belief.`}
-                  className="w-full border p-1 rounded min-h-[100px]"
+                  value={formData.techStatement}
                   onChange={handleChange}
+                  className="w-full border p-1 rounded min-h-[100px]"
                 />
               </td>
             </tr>
@@ -118,9 +148,9 @@ const Declaration: React.FC = () => {
               <td className="border border-gray-300 p-2">
                 <textarea
                   name="assistantStatement"
-                  defaultValue={`I have thoroughly reviewed and cross-checked this Valuation Report prepared by HABINSHUTI EVARISTE.\nI have: Examined the property description for accuracy and completeness; verified the maps, survey plans, and location details to ensure consistency with the valuation, assessed all supporting documents (title deeds, zoning certificates, etc.) for relevance and correctness, Scrutinized the computations, adjustments, and valuation methodology applied to confirm compliance with industry standards and regulatory requirements.\nAny discrepancies or concerns identified during the review have been addressed and resolved to ensure the integrity of the final valuation. I solemnly declare that the above statements are true and correct to the best of my knowledge and belief.`}
-                  className="w-full border p-1 rounded min-h-[100px]"
+                  value={formData.assistantStatement}
                   onChange={handleChange}
+                  className="w-full border p-1 rounded min-h-[100px]"
                 />
               </td>
             </tr>
@@ -160,9 +190,9 @@ const Declaration: React.FC = () => {
               <td className="border border-gray-300 p-2">
                 <textarea
                   name="finalStatement"
-                  defaultValue={`I, Valuer Phocas NIYONGOMBWA, hereby certify that I have no direct or indirect interest, financial or otherwise, in the property being valued or the parties involved that would compromise my impartiality and independence in conducting this property valuation. I have not been influenced by any party to the transaction, and my valuation is based solely on my professional judgment and analysis.`}
-                  className="w-full border p-1 rounded min-h-[80px]"
+                  value={formData.finalStatement}
                   onChange={handleChange}
+                  className="w-full border p-1 rounded min-h-[80px]"
                 />
               </td>
             </tr>

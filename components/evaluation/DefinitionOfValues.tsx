@@ -6,7 +6,12 @@ interface Definition {
   description: string;
 }
 
-const DefinitionOfValues: React.FC = () => {
+interface DefinitionOfValuesProps {
+  value: string;
+  onChange: (val: string) => void;
+}
+
+const DefinitionOfValues: React.FC<DefinitionOfValuesProps> = ({ value, onChange }) => {
   const definitions: Definition[] = [
     {
       id: "a",
@@ -24,12 +29,10 @@ const DefinitionOfValues: React.FC = () => {
 
   return (
     <div className="mb-8 border border-gray-300 rounded-md overflow-hidden">
-      {/* Title with gradient */}
       <div className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white px-4 py-2 font-bold text-lg">
         II. DEFINITION OF VALUES
       </div>
 
-      {/* Content */}
       <div className="bg-white text-black p-4 space-y-4">
         {definitions.map((item) => (
           <div key={item.id}>
@@ -39,6 +42,13 @@ const DefinitionOfValues: React.FC = () => {
             <p className="text-sm">{item.description}</p>
           </div>
         ))}
+
+        <textarea
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full border rounded p-2 mt-4"
+          placeholder="Add your notes or observations here..."
+        />
       </div>
     </div>
   );

@@ -1,4 +1,5 @@
-import React from 'react';
+"use client";
+import React from "react";
 
 interface BuildingData {
   house_name: string;
@@ -20,10 +21,16 @@ interface BuildingData {
 
 interface BuildingsProps {
   data: BuildingData | null | undefined;
+  onChange?: (val: BuildingData | null | undefined) => void;
 }
 
-export default function Buildings({ data }: BuildingsProps) {
+export default function Buildings({ data, onChange }: BuildingsProps) {
   if (!data) return <p>No building data available.</p>;
+
+  // Optional: call onChange if needed when data changes
+  React.useEffect(() => {
+    if (onChange) onChange(data);
+  }, [data, onChange]);
 
   // Helper to render a list or show "N/A"
   const renderList = (items?: string[]) =>
@@ -89,19 +96,17 @@ export default function Buildings({ data }: BuildingsProps) {
           </tr>
           <tr className="bg-white">
             <td className="border border-gray-300 px-4 py-3 font-semibold w-48">Pictures</td>
-     <td className="border border-gray-300 px-4 py-3">
-  {Array.isArray(data.pictures) &&
-    data.pictures.map((pic, idx) => (
-      <img
-        key={idx}
-        src={pic}
-        alt={`Picture ${idx + 1}`}
-        className="w-24 h-24 object-cover mb-2"
-      />
-    ))}
-</td>
-
-
+            <td className="border border-gray-300 px-4 py-3">
+              {Array.isArray(data.pictures) &&
+                data.pictures.map((pic, idx) => (
+                  <img
+                    key={idx}
+                    src={pic}
+                    alt={`Picture ${idx + 1}`}
+                    className="w-24 h-24 object-cover mb-2 rounded"
+                  />
+                ))}
+            </td>
           </tr>
           <tr className="bg-gray-50">
             <td className="border border-gray-300 px-4 py-3 font-semibold w-48">Accommodation Units</td>

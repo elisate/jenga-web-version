@@ -5,7 +5,12 @@ interface Point {
   text: string;
 }
 
-const LimitingCondition: React.FC = () => {
+interface LimitingConditionProps {
+  value: string;
+  onChange: (val: string) => void;
+}
+
+const LimitingCondition: React.FC<LimitingConditionProps> = ({ value, onChange }) => {
   const limitingConditions: Point[] = [
     {
       id: "i",
@@ -29,11 +34,8 @@ const LimitingCondition: React.FC = () => {
     },
   ];
 
-  
-
   return (
     <div className="space-y-8">
-      {/* Limiting Conditions */}
       <div className="mb-8 border border-gray-300 rounded-md overflow-hidden">
         <div className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white px-4 py-2 font-bold text-lg">
           IV. LIMITING CONDITIONS IN THIS VALUATION
@@ -46,10 +48,16 @@ const LimitingCondition: React.FC = () => {
               </li>
             ))}
           </ul>
+
+          {/* Editable field */}
+          <textarea
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            className="w-full border rounded p-2 mt-4"
+            placeholder="Add any additional limiting conditions..."
+          />
         </div>
       </div>
-
-     
     </div>
   );
 };

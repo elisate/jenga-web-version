@@ -12,7 +12,12 @@ interface Basis {
   subPoints?: SubPoint[];
 }
 
-const BasisOfValuation: React.FC = () => {
+interface BasisOfValuationProps {
+  value: string;
+  onChange: (val: string) => void;
+}
+
+const BasisOfValuation: React.FC<BasisOfValuationProps> = ({ value, onChange }) => {
   const basis: Basis[] = [
     {
       id: "a",
@@ -46,12 +51,10 @@ const BasisOfValuation: React.FC = () => {
 
   return (
     <div className="mb-8 border border-gray-300 rounded-md overflow-hidden">
-      {/* Title with gradient */}
       <div className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white px-4 py-2 font-bold text-lg">
         III. BASIS OF VALUATION
       </div>
 
-      {/* Content */}
       <div className="bg-white text-black p-4 space-y-4">
         {basis.map((item) => (
           <div key={item.id}>
@@ -71,6 +74,14 @@ const BasisOfValuation: React.FC = () => {
             )}
           </div>
         ))}
+
+        {/* Optional editable field */}
+        <textarea
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full border rounded p-2 mt-4"
+          placeholder="Add your notes or observations here..."
+        />
       </div>
     </div>
   );
