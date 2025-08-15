@@ -453,17 +453,18 @@ export async function GET(
     };
 
     // Improved valuation table function
+   // Improved valuation table function with reduced width
     const drawValuationTable = () => {
       if (!report.valuationTable) return;
 
       checkAndAddNewPage(200); // Ensure space for table
       writeTitle("12. COMPUTATION TABLE");
       
-      // Table settings
+      // Table settings - REDUCED COLUMN WIDTHS
       const tableStartX = pageMargin;
-      const colWidths = [120, 40, 40, 60, 60, 80, 60, 80];
+      const colWidths = [90, 30, 30, 45, 45, 60, 40, 60]; // Reduced from [120, 40, 40, 60, 60, 80, 60, 80]
       const rowHeight = 25; // Increased row height
-      const cellPadding = 3;
+      const cellPadding = 2; // Reduced padding to fit more content
       
       // Helper function to draw table row
       const drawTableRow = (data: (string | number)[], yPos: number, isHeader = false) => {
@@ -483,7 +484,7 @@ export async function GET(
           
           // Draw text in cell
           const cellText = String(data[i] || '');
-          const textSize = isHeader ? 11 : 10; // Increased font size
+          const textSize = isHeader ? 10 : 9; // Reduced font size to fit narrower columns
           const textFont = isHeader ? boldFont : font;
           
           // Handle text wrapping in cells if needed
@@ -564,7 +565,7 @@ export async function GET(
         currentPage.drawText("VALUATION SUMMARY", {
           x: pageMargin,
           y: tableY + 10,
-          size: 14, // Increased content font size
+          size: 13, // Slightly reduced title font size
           font: boldFont,
           color: rgb(0, 0, 0.7)
         });
@@ -591,25 +592,31 @@ export async function GET(
     let pageNumber = 1;
     
     // Cover Page Title
-    currentPage.drawText("TOWER PROPERTY CONSULTANCY LTD", {
-      x: pageMargin,
-      y: height - 50,
-      size: 20,
-      font: boldFont,
-      color: rgb(0.1, 0.2, 0.6)
-    });
+    // currentPage = pdfDoc.addPage();
+    // ({ width, height } = currentPage.getSize());
+    // addHeader(currentPage, pageNumber);
+    // y = height - headerHeight - 20;
+    // currentPage.drawText("TOWER PROPERTY CONSULTANCY LTD", {
+    //   x: pageMargin,
+    //   y: height - 50,
+    //   size: 20,
+    //   font: boldFont,
+    //   color: rgb(0.1, 0.2, 0.6)
+    // });
     
-    currentPage.drawText("PROPERTY VALUATION REPORT", {
-      x: pageMargin,
-      y: height - 80,
-      size: 16,
-      font: boldFont,
-      color: rgb(0.1, 0.2, 0.6)
-    });
+    // currentPage.drawText("PROPERTY VALUATION REPORT", {
+    //   x: pageMargin,
+    //   y: height - 80,
+    //   size: 16,
+    //   font: boldFont,
+    //   color: rgb(0.1, 0.2, 0.6)
+    // });
 
-    y = height - 120;
+    // y = height - 120;
 
     // Display property images on cover page
+    addHeader(currentPage, pageNumber);
+y = height - headerHeight - 20;
     const coverImages = report.property?.imgs || [];
     
     if (coverImages.length > 0) {
