@@ -121,19 +121,34 @@ async function fetchAndEmbedImage(pdfDoc: PDFDocument, imageUrl: string) {
   }
 }
 
-// Helper function to parse HTML content and extract text
-function parseHtmlToText(html: string): string {
-  if (!html) return "";
+// Helper function to parse HTML content and extract text with proper formatting
+function parseHtmlToText(html: string): string[] {
+  if (!html) return [];
   
-  // Remove HTML tags and decode entities
-  return html
-    .replace(/<[^>]*>/g, '') // Remove HTML tags
+  // Split by major HTML elements and clean
+  let sections = html
+    .replace(/<h[1-6][^>]*>/gi, '\n\n**')
+    .replace(/<\/h[1-6]>/gi, '**\n')
+    .replace(/<li[^>]*>/gi, '\n• ')
+    .replace(/<\/li>/gi, '')
+    .replace(/<ol[^>]*>/gi, '\n')
+    .replace(/<\/ol>/gi, '\n')
+    .replace(/<ul[^>]*>/gi, '\n')
+    .replace(/<\/ul>/gi, '\n')
+    .replace(/<p[^>]*>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<[^>]*>/g, '') // Remove remaining HTML tags
     .replace(/&nbsp;/g, ' ')
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
-    .trim();
+    .split('\n')
+    .map(line => line.trim())
+    .filter(line => line.length > 0);
+
+  return sections;
 }
 
 export async function GET(
@@ -163,10 +178,16 @@ export async function GET(
     
     let currentPage = pdfDoc.addPage();
     let { width, height } = currentPage.getSize();
-    let y = height - 95;
-    const pageMargin = 50;
-    const lineHeight = 16;
-    const sectionSpacing = 25;
+    let y = height - 100; // Start lower to avoid header
+    
+    // Improved layout constants
+    const pageMargin = 60; // Increased margin for better padding
+    const contentWidth = width - (2 * pageMargin); // Equal left and right padding
+    const lineHeight = 20; // Increased line height for better readability
+    const sectionSpacing = 30; // Better section spacing
+    const headerHeight = 85;
+    const footerHeight = 90;
+    const contentAreaHeight = height - headerHeight - footerHeight;
 
     // Load and embed the logo
     let logoImage = null;
@@ -177,7 +198,7 @@ export async function GET(
       console.log("Could not load logo image:", error);
     }
 
-    // Header and Footer functions
+    // Improved Header function
     const addHeader = (page: any, pageNumber: number) => {
       if (logoImage) {
         const logoWidth = 80;
@@ -193,23 +214,23 @@ export async function GET(
       page.drawText("TOWER PROPERTY CONSULTANCY LTD", {
         x: pageMargin,
         y: height - 25,
-        size: 18,
+        size: 16, // Consistent header font size
         font: boldFont,
         color: rgb(0.1, 0.2, 0.6)
       });
       
       page.drawText("VALUATION REPORT", {
         x: pageMargin,
-        y: height - 45,
-        size: 14,
+        y: height - 42,
+        size: 12,
         font: boldFont,
         color: rgb(0.1, 0.2, 0.6)
       });
       
       page.drawText("RESIDENTIAL PROPERTY", {
         x: pageMargin,
-        y: height - 62,
-        size: 12,
+        y: height - 57,
+        size: 10,
         font: font,
         color: rgb(0.1, 0.2, 0.6)
       });
@@ -217,141 +238,194 @@ export async function GET(
       page.drawText(`Report ID: ${id}`, {
         x: width - 200,
         y: height - 65,
-        size: 10,
+        size: 9, // Consistent header font size
         font: font,
         color: rgb(0.5, 0.5, 0.5)
       });
 
+      // Header separator line
       page.drawLine({
-        start: { x: pageMargin, y: height - 75 },
-        end: { x: width - pageMargin, y: height - 75 },
+        start: { x: pageMargin, y: height - headerHeight },
+        end: { x: width - pageMargin, y: height - headerHeight },
         thickness: 2,
         color: rgb(0.1, 0.2, 0.6)
       });
     };
 
+    // Improved Footer function
     const addFooter = (page: any, pageNumber: number) => {
-      const footerY = 50;
+      const footerY = footerHeight;
       
+      // Footer separator line
       page.drawLine({
-        start: { x: pageMargin, y: footerY + 35 },
-        end: { x: width - pageMargin, y: footerY + 35 },
-        thickness: 2,
+        start: { x: pageMargin, y: footerY + 45 },
+        end: { x: width - pageMargin, y: footerY + 45 },
+        thickness: 1,
         color: rgb(0.1, 0.2, 0.6)
       });
 
       page.drawText("Tel No: 0783520172, 0788474844, 0728520172; Email: towerpropertyconsultancy@gmail.com", {
         x: pageMargin,
-        y: footerY + 15,
-        size: 9,
+        y: footerY + 25,
+        size: 8, // Consistent footer font size
         font: font,
         color: rgb(0.1, 0.4, 0.8)
       });
 
       page.drawText("Address: Office No 03, 2nd Floor-GOLDEN PLAZA KG 11 AVE Behind BPR-Kimironko Branch, Kimironko, Kigali-Rwanda", {
         x: pageMargin,
-        y: footerY + 2,
-        size: 9,
+        y: footerY + 12,
+        size: 8,
         font: font,
         color: rgb(0.1, 0.4, 0.8)
       });
 
       page.drawText("Services: Property valuation, Property Management, Property brokerage, Property investment consultancy.", {
         x: pageMargin,
-        y: footerY - 11,
-        size: 9,
+        y: footerY - 1,
+        size: 8,
         font: font,
         color: rgb(0.1, 0.4, 0.8)
       });
 
       page.drawText(`Page ${pageNumber}`, {
         x: width / 2 - 20,
-        y: footerY - 25,
-        size: 10,
+        y: footerY - 20,
+        size: 9,
         font: font,
         color: rgb(0.5, 0.5, 0.5)
       });
 
       page.drawText(new Date().toLocaleDateString(), {
         x: width - 100,
-        y: footerY - 25,
-        size: 10,
+        y: footerY - 20,
+        size: 9,
         font: font,
         color: rgb(0.5, 0.5, 0.5)
       });
     };
 
-    const checkAndAddNewPage = () => {
-      if (y < 100) {
+    // Improved page check function
+    const checkAndAddNewPage = (requiredSpace = 60) => {
+      if (y < footerHeight + requiredSpace) {
         addFooter(currentPage, pdfDoc.getPageCount());
         currentPage = pdfDoc.addPage();
         ({ width, height } = currentPage.getSize());
         addHeader(currentPage, pdfDoc.getPageCount());
-        y = height - 95;
+        y = height - headerHeight - 20; // Reset y position below header
+        return true;
       }
+      return false;
     };
 
-    const writeTitle = (title: string) => {
-      checkAndAddNewPage();
+    // Improved title writing function
+    const writeTitle = (title: string, size = 16) => {
+      checkAndAddNewPage(80);
       currentPage.drawText(title, {
         x: pageMargin,
         y: y,
-        size: 14,
+        size: size, // Increased content font size
         font: boldFont,
         color: rgb(0, 0, 0.7)
       });
       y -= sectionSpacing;
     };
 
-    const writeText = (label: string, value: string, indent = 0) => {
+    // Improved text writing function with better word wrapping
+    const writeText = (label: string, value: string, indent = 0, isBold = false) => {
       if (!value || value === "N/A") return;
       
       checkAndAddNewPage();
       
       const text = `${label}: ${value}`;
-      const maxWidth = width - pageMargin * 2 - indent;
+      const maxWidth = contentWidth - indent;
+      const fontSize = 12; // Increased content font size
+      const textFont = isBold ? boldFont : font;
       
-      if (text.length > 80) {
-        const words = text.split(' ');
-        let line = '';
+      // Calculate text width and wrap if necessary
+      const words = text.split(' ');
+      let lines: string[] = [];
+      let currentLine = '';
+      
+      for (const word of words) {
+        const testLine = currentLine + word + ' ';
+        const textWidth = textFont.widthOfTextAtSize(testLine, fontSize);
         
-        for (const word of words) {
-          const testLine = line + word + ' ';
-          if (testLine.length > 80 && line !== '') {
-            currentPage.drawText(line.trim(), {
-              x: pageMargin + indent,
-              y: y,
-              size: 10,
-              font: font
-            });
-            y -= lineHeight;
-            checkAndAddNewPage();
-            line = word + ' ';
-          } else {
-            line = testLine;
-          }
+        if (textWidth > maxWidth && currentLine !== '') {
+          lines.push(currentLine.trim());
+          currentLine = word + ' ';
+        } else {
+          currentLine = testLine;
         }
-        
-        if (line.trim()) {
-          currentPage.drawText(line.trim(), {
-            x: pageMargin + indent,
-            y: y,
-            size: 10,
-            font: font
-          });
-          y -= lineHeight;
-        }
-      } else {
-        currentPage.drawText(text, {
+      }
+      
+      if (currentLine.trim()) {
+        lines.push(currentLine.trim());
+      }
+      
+      // Draw each line
+      for (const line of lines) {
+        checkAndAddNewPage();
+        currentPage.drawText(line, {
           x: pageMargin + indent,
           y: y,
-          size: 10,
-          font: font
+          size: fontSize,
+          font: textFont
         });
         y -= lineHeight;
       }
     };
 
+    // Function to write HTML content with proper formatting
+    const writeHtmlContent = (label: string, htmlContent: string, indent = 0) => {
+      if (!htmlContent) return;
+      
+      const sections = parseHtmlToText(htmlContent);
+      if (sections.length === 0) return;
+      
+      // Write the main label if provided
+      if (label) {
+        checkAndAddNewPage();
+        currentPage.drawText(`${label}:`, {
+          x: pageMargin + indent,
+          y: y,
+          size: 12, // Increased content font size
+          font: boldFont
+        });
+        y -= lineHeight + 5;
+      }
+      
+      // Write each section
+      for (let section of sections) {
+        if (section.startsWith('**') && section.endsWith('**')) {
+          // This is a header
+          section = section.replace(/\*\*/g, '');
+          checkAndAddNewPage(40);
+          currentPage.drawText(section, {
+            x: pageMargin + indent + 20,
+            y: y,
+            size: 13, // Increased content font size
+            font: boldFont,
+            color: rgb(0.2, 0.2, 0.7)
+          });
+          y -= lineHeight + 5;
+        } else if (section.startsWith('• ')) {
+          // This is a list item
+          section = section.substring(2);
+          writeText('', `• ${section}`, indent + 20);
+        } else if (section.match(/^\d+\./)) {
+          // This is a numbered list item
+          writeText('', section, indent + 20);
+        } else {
+          // Regular paragraph
+          writeText('', section, indent + 20);
+        }
+      }
+      
+      y -= 10; // Extra space after HTML content
+    };
+
+    // Function to handle arrays
     const writeArray = (label: string, values: string[] | string | undefined, indent = 0) => {
       if (!values) return;
       
@@ -378,25 +452,17 @@ export async function GET(
       writeText(label, arrayValues.join(", "), indent);
     };
 
-    const writeHtmlContent = (label: string, htmlContent: string, indent = 0) => {
-      if (!htmlContent) return;
-      
-      const textContent = parseHtmlToText(htmlContent);
-      if (textContent) {
-        writeText(label, textContent, indent);
-      }
-    };
-
-    // Function to draw valuation table
+    // Improved valuation table function
     const drawValuationTable = () => {
       if (!report.valuationTable) return;
 
-      writeTitle("11. COMPUTATION TABLE");
+      checkAndAddNewPage(200); // Ensure space for table
+      writeTitle("12. COMPUTATION TABLE");
       
       // Table settings
       const tableStartX = pageMargin;
-      const colWidths = [120, 40, 40, 60, 60, 80, 60, 80]; // Adjust column widths as needed
-      const rowHeight = 20;
+      const colWidths = [120, 40, 40, 60, 60, 80, 60, 80];
+      const rowHeight = 25; // Increased row height
       const cellPadding = 5;
       
       // Helper function to draw table row
@@ -417,12 +483,24 @@ export async function GET(
           
           // Draw text in cell
           const cellText = String(data[i] || '');
-          const textSize = isHeader ? 10 : 9;
+          const textSize = isHeader ? 11 : 10; // Increased font size
           const textFont = isHeader ? boldFont : font;
           
-          currentPage.drawText(cellText, {
+          // Handle text wrapping in cells if needed
+          const maxCellWidth = colWidths[i] - (2 * cellPadding);
+          let displayText = cellText;
+          
+          if (textFont.widthOfTextAtSize(cellText, textSize) > maxCellWidth) {
+            // Truncate with ellipsis if too long
+            while (textFont.widthOfTextAtSize(displayText + '...', textSize) > maxCellWidth && displayText.length > 0) {
+              displayText = displayText.slice(0, -1);
+            }
+            displayText += '...';
+          }
+          
+          currentPage.drawText(displayText, {
             x: currentX + cellPadding,
-            y: yPos - rowHeight + 5,
+            y: yPos - rowHeight + 8,
             size: textSize,
             font: textFont,
             color: rgb(0, 0, 0),
@@ -434,8 +512,7 @@ export async function GET(
         return yPos - rowHeight;
       };
 
-      // Draw main table header
-      checkAndAddNewPage();
+      // Draw main table
       let tableY = y;
       
       const mainHeaders = ['Description', 'Unit', 'Note', 'Quantity', 'Rate', 'Amount', 'Depr%', 'Net Value'];
@@ -444,13 +521,12 @@ export async function GET(
       // Draw main building items
       if (report.valuationTable.main) {
         for (const row of report.valuationTable.main) {
-          checkAndAddNewPage();
-          if (y < 150) {
+          if (tableY < footerHeight + 60) {
             addFooter(currentPage, pdfDoc.getPageCount());
             currentPage = pdfDoc.addPage();
             ({ width, height } = currentPage.getSize());
             addHeader(currentPage, pdfDoc.getPageCount());
-            y = height - 95;
+            y = height - headerHeight - 20;
             tableY = y;
             // Redraw headers on new page
             tableY = drawTableRow(mainHeaders, tableY, true);
@@ -459,50 +535,196 @@ export async function GET(
         }
       }
 
-      // Draw land value if available
+      // Draw land value
       if (report.valuationTable.land) {
-        tableY -= 10; // Add some space
-        checkAndAddNewPage();
+        tableY -= 15;
+        if (tableY < footerHeight + 60) {
+          addFooter(currentPage, pdfDoc.getPageCount());
+          currentPage = pdfDoc.addPage();
+          ({ width, height } = currentPage.getSize());
+          addHeader(currentPage, pdfDoc.getPageCount());
+          y = height - headerHeight - 20;
+          tableY = y;
+        }
         tableY = drawTableRow(report.valuationTable.land, tableY);
       }
 
       // Draw summary section
       if (report.valuationTable.summary) {
-        tableY -= 20; // Add more space before summary
-        checkAndAddNewPage();
+        tableY -= 30;
+        if (tableY < footerHeight + 100) {
+          addFooter(currentPage, pdfDoc.getPageCount());
+          currentPage = pdfDoc.addPage();
+          ({ width, height } = currentPage.getSize());
+          addHeader(currentPage, pdfDoc.getPageCount());
+          y = height - headerHeight - 20;
+          tableY = y;
+        }
         
-        // Summary header
         currentPage.drawText("VALUATION SUMMARY", {
           x: pageMargin,
           y: tableY + 10,
-          size: 12,
+          size: 14, // Increased content font size
           font: boldFont,
           color: rgb(0, 0, 0.7)
         });
         
+        tableY -= 15;
         for (const row of report.valuationTable.summary) {
-          checkAndAddNewPage();
+          if (tableY < footerHeight + 60) {
+            addFooter(currentPage, pdfDoc.getPageCount());
+            currentPage = pdfDoc.addPage();
+            ({ width, height } = currentPage.getSize());
+            addHeader(currentPage, pdfDoc.getPageCount());
+            y = height - headerHeight - 20;
+            tableY = y;
+          }
           tableY = drawTableRow(row, tableY);
         }
       }
 
-      y = tableY - 20; // Update global y position
+      y = tableY - 30;
     };
 
-    // Add first page header
-    addHeader(currentPage, 1);
-
-    // Report Title
-    currentPage.drawText("PROPERTY VALUATION REPORT", {
+    // COVER PAGE CREATION
+    // Remove header/footer from cover page initially
+    let pageNumber = 1;
+    
+    // Cover Page Title
+    currentPage.drawText("TOWER PROPERTY CONSULTANCY LTD", {
       x: pageMargin,
-      y: y,
+      y: height - 50,
       size: 20,
       font: boldFont,
-      color: rgb(0, 0, 0.8)
+      color: rgb(0.1, 0.2, 0.6)
     });
-    y -= 40;
+    
+    currentPage.drawText("PROPERTY VALUATION REPORT", {
+      x: pageMargin,
+      y: height - 80,
+      size: 16,
+      font: boldFont,
+      color: rgb(0.1, 0.2, 0.6)
+    });
 
-    // FOLLOW THE EXACT ORDER SPECIFIED:
+    y = height - 120;
+
+    // Display property images on cover page
+    const coverImages = report.property?.imgs || [];
+    
+    if (coverImages.length > 0) {
+      // Main cover image
+      const mainImageUrl = coverImages[0];
+      const mainImage = await fetchAndEmbedImage(pdfDoc, mainImageUrl);
+      
+      if (mainImage) {
+        const coverImageWidth = 400;
+        const coverImageHeight = 250;
+        const imageX = (width - coverImageWidth) / 2;
+        
+        currentPage.drawImage(mainImage, {
+          x: imageX,
+          y: y - coverImageHeight,
+          width: coverImageWidth,
+          height: coverImageHeight
+        });
+        
+        y -= coverImageHeight + 40;
+      }
+      
+      // Additional images in a row
+      if (coverImages.length > 1) {
+        const imagesPerRow = Math.min(3, coverImages.length - 1);
+        const imageWidth = (contentWidth - 20) / imagesPerRow;
+        const imageHeight = 120;
+        let currentX = pageMargin;
+        
+        for (let i = 1; i <= imagesPerRow && i < coverImages.length; i++) {
+          const imageUrl = coverImages[i];
+          const embeddedImage = await fetchAndEmbedImage(pdfDoc, imageUrl);
+          
+          if (embeddedImage) {
+            currentPage.drawImage(embeddedImage, {
+              x: currentX,
+              y: y - imageHeight,
+              width: imageWidth - 10,
+              height: imageHeight
+            });
+            currentX += imageWidth;
+          }
+        }
+        y -= imageHeight + 30;
+      }
+    }
+
+    // Property overview on cover page
+    if (report.property) {
+      currentPage.drawText("PROPERTY OVERVIEW", {
+        x: pageMargin,
+        y: y,
+        size: 16,
+        font: boldFont,
+        color: rgb(0, 0, 0.7)
+      });
+      y -= 30;
+      
+      const overviewItems = [
+        { label: "Property Owner", value: report.property.owner || "N/A" },
+        { label: "UPI Number", value: report.property.upi || "N/A" },
+        { label: "Location", value: `${report.property.address || ''}, ${report.property.district || ''}, ${report.property.province || ''}`.replace(/^, |, $/g, '') || "N/A" },
+        { label: "Village", value: report.property.village || "N/A" },
+        { label: "Cell", value: report.property.cell || "N/A" },
+        { label: "Sector", value: report.property.sector || "N/A" }
+      ];
+      
+      for (const item of overviewItems) {
+        currentPage.drawText(`${item.label}: ${item.value}`, {
+          x: pageMargin + 20,
+          y: y,
+          size: 12,
+          font: font
+        });
+        y -= 22;
+      }
+    }
+
+    // Add valuation summary to cover page
+    if (report.valuationTable?.summary) {
+      y -= 20;
+      currentPage.drawText("VALUATION SUMMARY", {
+        x: pageMargin,
+        y: y,
+        size: 14,
+        font: boldFont,
+        color: rgb(0, 0, 0.7)
+      });
+      y -= 25;
+      
+      for (const row of report.valuationTable.summary) {
+        if (row[0] && row[7]) {
+          const value = typeof row[7] === 'number' ? row[7].toLocaleString() : row[7];
+          currentPage.drawText(`${row[0]}: RWF ${value}`, {
+            x: pageMargin + 20,
+            y: y,
+            size: 12,
+            font: font,
+            color: rgb(0.2, 0.5, 0.2)
+          });
+          y -= 20;
+        }
+      }
+    }
+
+    // Add footer to cover page
+    addFooter(currentPage, pageNumber++);
+
+    // START NEW PAGE FOR CONTENT
+    currentPage = pdfDoc.addPage();
+    ({ width, height } = currentPage.getSize());
+    addHeader(currentPage, pageNumber);
+    y = height - headerHeight - 20;
+
+    // MAIN CONTENT SECTIONS (Following your specified order)
 
     // 1. INSTRUCTIONS
     writeTitle("1. VALUATION INSTRUCTIONS");
@@ -514,29 +736,29 @@ export async function GET(
       writeText("Report Date", report.instructions.date || "N/A", 20);
       writeArray("Purposes", report.instructions.purposes, 20);
     }
-    y -= sectionSpacing;
 
     // 2. DEFINITION OF VALUES
+    checkAndAddNewPage(100);
     writeTitle("2. DEFINITION OF VALUES");
-    writeHtmlContent("Definition", report.definitionOfValues || "N/A", 20);
-    y -= sectionSpacing;
+    writeHtmlContent("", report.definitionOfValues || "N/A", 0);
 
     // 3. BASIS OF VALUATION
+    checkAndAddNewPage(100);
     writeTitle("3. BASIS OF VALUATION");
-    writeHtmlContent("Basis", report.basisOfValuation || "N/A", 20);
-    y -= sectionSpacing;
+    writeHtmlContent("", report.basisOfValuation || "N/A", 0);
 
     // 4. LIMITING CONDITIONS
+    checkAndAddNewPage(100);
     writeTitle("4. LIMITING CONDITIONS");
-    writeHtmlContent("Conditions", report.limitingCondition || "N/A", 20);
-    y -= sectionSpacing;
+    writeHtmlContent("", report.limitingCondition || "N/A", 0);
 
     // 5. ASSUMPTIONS
+    checkAndAddNewPage(100);
     writeTitle("5. ASSUMPTIONS");
-    writeHtmlContent("Assumptions", report.assumptions || "N/A", 20);
-    y -= sectionSpacing;
+    writeHtmlContent("", report.assumptions || "N/A", 0);
 
     // 6. DECLARATIONS
+    checkAndAddNewPage(100);
     writeTitle("6. PROFESSIONAL DECLARATIONS");
     if (report.declaration) {
       if (report.declaration.techName) {
@@ -544,23 +766,23 @@ export async function GET(
         writeText("Position", report.declaration.techPosition || "N/A", 20);
         writeText("Date", report.declaration.techDate || "N/A", 20);
         writeText("Statement", report.declaration.techStatement || "N/A", 20);
-        y -= 10;
       }
       
       if (report.declaration.assistantName) {
+        y -= 15;
         writeText("Assistant Valuer", report.declaration.assistantName, 20);
         writeText("Date", report.declaration.assistantDate || "N/A", 20);
         writeText("Statement", report.declaration.assistantStatement || "N/A", 20);
-        y -= 10;
       }
       
       if (report.declaration.finalStatement) {
+        y -= 15;
         writeText("Final Declaration", report.declaration.finalStatement, 20);
       }
     }
-    y -= sectionSpacing;
 
     // 7. PROPERTY LOCATION
+    checkAndAddNewPage(100);
     writeTitle("7. PROPERTY LOCATION");
     if (report.property) {
       writeText("Property Owner", report.property.owner || "N/A", 20);
@@ -574,9 +796,9 @@ export async function GET(
       writeText("Country", report.property.country || "N/A", 20);
       writeText("Geographical Coordinates", report.property.geographical_coordinate || "N/A", 20);
     }
-    y -= sectionSpacing;
 
     // 8. TENURE AND TENANCIES
+    checkAndAddNewPage(100);
     writeTitle("8. TENURE AND TENANCIES");
     if (report.landTenure) {
       writeText("Tenure Type", report.landTenure.tenure || "N/A", 20);
@@ -593,9 +815,9 @@ export async function GET(
       writeText("Prohibited Uses", report.landTenure.prohibited_uses || "N/A", 20);
       writeText("Lot Size Notes", report.landTenure.lot_size_notes || "N/A", 20);
     }
-    y -= sectionSpacing;
 
     // 9. SERVICES AND SITE WORKS
+    checkAndAddNewPage(100);
     writeTitle("9. SERVICES AND SITE WORKS");
     if (report.siteWorks) {
       writeText("Site Name", report.siteWorks.site_name || "N/A", 20);
@@ -613,9 +835,64 @@ export async function GET(
       writeText("Playground Area", report.siteWorks.playground_sqm ? `${report.siteWorks.playground_sqm} sqm` : "N/A", 20);
       writeText("Swimming Pool Area", report.siteWorks.swimming_pool_sqm ? `${report.siteWorks.swimming_pool_sqm} sqm` : "N/A", 20);
     }
-    y -= sectionSpacing;
+    
+    // Add site work images
+    const siteWorkImages = report.siteWorks?.pictures || [];
+    
+    if (siteWorkImages.length > 0) {
+      y -= 20;
+      currentPage.drawText("Site Work Photographs:", {
+        x: pageMargin + 20,
+        y: y,
+        size: 14, // Increased content font size
+        font: boldFont,
+        color: rgb(0, 0, 0.6)
+      });
+      y -= 25;
+      
+      for (let i = 0; i < siteWorkImages.length; i++) {
+        let imageUrl = siteWorkImages[i];
+        
+        // Parse JSON string if needed
+        if (typeof imageUrl === 'string' && imageUrl.startsWith('[') && imageUrl.endsWith(']')) {
+          try {
+            const parsed = JSON.parse(imageUrl);
+            imageUrl = Array.isArray(parsed) ? parsed[0] : imageUrl;
+          } catch (e) {
+            console.log("Failed to parse site work image URL as JSON:", e);
+          }
+        }
+        
+        const embeddedImage = await fetchAndEmbedImage(pdfDoc, imageUrl);
+        
+        if (embeddedImage) {
+          checkAndAddNewPage(200);
 
-    // 10. BUILDING
+          const imageWidth = 200; // Increased image size
+          const imageHeight = 150;
+          
+          currentPage.drawText(`Site Work Photo ${i + 1}:`, {
+            x: pageMargin + 20,
+            y: y,
+            size: 12, // Increased content font size
+            font: font
+          });
+          y -= 20;
+
+          currentPage.drawImage(embeddedImage, {
+            x: pageMargin + 20,
+            y: y - imageHeight,
+            width: imageWidth,
+            height: imageHeight
+          });
+          
+          y -= imageHeight + 25;
+        }
+      }
+    }
+
+    // 10. BUILDING DETAILS
+    checkAndAddNewPage(100);
     writeTitle("10. BUILDING DETAILS");
     if (report.building) {
       writeText("Building Name", report.building.house_name || "N/A", 20);
@@ -633,63 +910,61 @@ export async function GET(
       writeArray("Accommodation Units", report.building.accommodation_units, 20);
       writeArray("Other Units", report.building.other_accommodation_unit, 20);
     }
-    y -= sectionSpacing;
-
-    // 11. GENERAL REMARKS
-    if (report.generalRemarks) {
-      writeTitle("11. GENERAL REMARKS");
-      writeHtmlContent("Remarks", report.generalRemarks, 20);
-      y -= sectionSpacing;
-    }
-
-    // 12. COMPUTATION TABLE (The valuation table)
-    drawValuationTable();
-
-    // Add property images at the end
-    const allImages = [
-      ...(report.property?.imgs || []),
-      ...(report.siteWorks?.pictures || []),
-      ...(report.building?.pictures || [])
-    ];
-
-    if (allImages.length > 0) {
-      writeTitle("PROPERTY PHOTOGRAPHS");
+    
+    // Add building images
+    const buildingImages = report.building?.pictures || [];
+    
+    if (buildingImages.length > 0) {
+      y -= 20;
+      currentPage.drawText("Building Photographs:", {
+        x: pageMargin + 20,
+        y: y,
+        size: 14, // Increased content font size
+        font: boldFont,
+        color: rgb(0, 0, 0.6)
+      });
+      y -= 25;
       
-      for (let i = 0; i < allImages.length; i++) {
-        const imageUrl = allImages[i];
+      for (let i = 0; i < buildingImages.length; i++) {
+        const imageUrl = buildingImages[i];
         const embeddedImage = await fetchAndEmbedImage(pdfDoc, imageUrl);
         
         if (embeddedImage) {
-          if (y < 280) {
-            addFooter(currentPage, pdfDoc.getPageCount());
-            currentPage = pdfDoc.addPage();
-            ({ width, height } = currentPage.getSize());
-            addHeader(currentPage, pdfDoc.getPageCount());
-            y = height - 95;
-          }
+          checkAndAddNewPage(200);
 
-          const imageWidth = 200;
+          const imageWidth = 200; // Increased image size
           const imageHeight = 150;
           
-          currentPage.drawText(`Photo ${i + 1}:`, {
-            x: pageMargin,
+          currentPage.drawText(`Building Photo ${i + 1}:`, {
+            x: pageMargin + 20,
             y: y,
-            size: 10,
-            font: boldFont
+            size: 12, // Increased content font size
+            font: font
           });
           y -= 20;
 
           currentPage.drawImage(embeddedImage, {
-            x: pageMargin,
+            x: pageMargin + 20,
             y: y - imageHeight,
             width: imageWidth,
             height: imageHeight
           });
           
-          y -= imageHeight + 20;
+          y -= imageHeight + 25;
         }
       }
     }
+
+    // 11. GENERAL REMARKS
+    if (report.generalRemarks) {
+      checkAndAddNewPage(100);
+      writeTitle("11. GENERAL REMARKS");
+      writeHtmlContent("", report.generalRemarks, 0);
+    }
+
+    // 12. COMPUTATION TABLE
+    checkAndAddNewPage(200);
+    drawValuationTable();
 
     // Add footer to last page
     addFooter(currentPage, pdfDoc.getPageCount());
