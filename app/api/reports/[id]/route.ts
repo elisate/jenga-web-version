@@ -237,7 +237,7 @@ export async function GET(
         color: rgb(0.1, 0.4, 0.8)
       });
 
-      page.drawText("Address: Office No 03, 2nd Floor-GOLDEN PLAZA KG 11 AVE Behind BPR-Kimisagara Branch, Kimisagara, Kigali-Rwanda", {
+      page.drawText("Address: Office No 03, 2nd Floor-GOLDEN PLAZA KG 11 AVE Behind BPR-Kimironko Branch, Kimironko, Kigali-Rwanda", {
         x: pageMargin,
         y: footerY + 2,
         size: 9,
