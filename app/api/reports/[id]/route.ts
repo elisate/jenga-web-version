@@ -463,7 +463,7 @@ export async function GET(
       const tableStartX = pageMargin;
       const colWidths = [120, 40, 40, 60, 60, 80, 60, 80];
       const rowHeight = 25; // Increased row height
-      const cellPadding = 5;
+      const cellPadding = 3;
       
       // Helper function to draw table row
       const drawTableRow = (data: (string | number)[], yPos: number, isHeader = false) => {
@@ -689,31 +689,31 @@ export async function GET(
     }
 
     // Add valuation summary to cover page
-    if (report.valuationTable?.summary) {
-      y -= 20;
-      currentPage.drawText("VALUATION SUMMARY", {
-        x: pageMargin,
-        y: y,
-        size: 14,
-        font: boldFont,
-        color: rgb(0, 0, 0.7)
-      });
-      y -= 25;
+    // if (report.valuationTable?.summary) {
+    //   y -= 20;
+    //   currentPage.drawText("VALUATION SUMMARY", {
+    //     x: pageMargin,
+    //     y: y,
+    //     size: 14,
+    //     font: boldFont,
+    //     color: rgb(0, 0, 0.7)
+    //   });
+    //   y -= 25;
       
-      for (const row of report.valuationTable.summary) {
-        if (row[0] && row[7]) {
-          const value = typeof row[7] === 'number' ? row[7].toLocaleString() : row[7];
-          currentPage.drawText(`${row[0]}: RWF ${value}`, {
-            x: pageMargin + 20,
-            y: y,
-            size: 12,
-            font: font,
-            color: rgb(0.2, 0.5, 0.2)
-          });
-          y -= 20;
-        }
-      }
-    }
+    //   for (const row of report.valuationTable.summary) {
+    //     if (row[0] && row[7]) {
+    //       const value = typeof row[7] === 'number' ? row[7].toLocaleString() : row[7];
+    //       currentPage.drawText(`${row[0]}: RWF ${value}`, {
+    //         x: pageMargin + 20,
+    //         y: y,
+    //         size: 12,
+    //         font: font,
+    //         color: rgb(0.2, 0.5, 0.2)
+    //       });
+    //       y -= 20;
+    //     }
+    //   }
+    // }
 
     // Add footer to cover page
     addFooter(currentPage, pageNumber++);
