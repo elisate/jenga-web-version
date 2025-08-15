@@ -4,8 +4,6 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { getEvaluationDetailsById } from "@/Reporting/evaluationDetail";
 import { saveReport } from "@/Reporting/finalReport";
-import { jsPDF } from "jspdf";
-import autoTable from "jspdf-autotable";
 
 // Import all your reusable sections
 import Instructions from "@/components/evaluation/Instructions";
@@ -21,55 +19,6 @@ import GeneralRemarks from "@/components/evaluation/GeneralRemarks";
 import ValuationComputationTable from "@/components/evaluation/ValuationComputationTable";
 import Declaration from "@/components/evaluation/Declaration";
 
-// PDF generator
-const generatePdf = (evaluationId: number, data: any) => {
-  const doc = new jsPDF();
-  let y = 20;
-
-  doc.setFontSize(18);
-  doc.text("Valuation Report", 10, y);
-  y += 12;
-
-  doc.setFontSize(12);
-  doc.text(`Evaluation ID: ${evaluationId}`, 10, y);
-  y += 10;
-
-  if (data?.property?.location) {
-    doc.text(`Property Location: ${data.property.location}`, 10, y);
-    y += 10;
-  }
-
-  if (data?.property?.owners?.length) {
-    doc.text("Owners:", 10, y);
-    y += 6;
-
-    const ownersTableData = data.property.owners.map((owner: any, idx: number) => [
-      idx + 1,
-      owner.name || "-",
-      owner.share || "-",
-      owner.idNumber || "-"
-    ]);
-
-    autoTable(doc, {
-      startY: y,
-      head: [["#", "Name", "Share", "ID Number"]],
-      body: ownersTableData,
-      margin: { left: 10, right: 10 },
-      styles: { fontSize: 10 },
-      headStyles: { fillColor: [41, 128, 185] }
-    });
-
-    y = (doc as any).lastAutoTable?.finalY + 10 || y + 10;
-  }
-
-  if (data?.landTenure?.tenure) {
-    doc.text(`Land Tenure: ${data.landTenure.tenure}`, 10, y);
-    y += 10;
-  }
-
-  doc.save(`valuation-report-${evaluationId}.pdf`);
-};
-
 export default function ValuationReport() {
   const { id } = useParams();
   const evaluationId = Number(id);
@@ -83,7 +32,6 @@ export default function ValuationReport() {
       setLoading(true);
       try {
         const data = await getEvaluationDetailsById(evaluationId);
-        // initialize central state
         setReportData({
           instructions: "",
           definitionOfValues: "",
@@ -104,20 +52,19 @@ export default function ValuationReport() {
         setLoading(false);
       }
     }
+
     if (evaluationId) fetchEvaluation();
   }, [evaluationId]);
 
   if (loading) return <p>Loading...</p>;
   if (!reportData) return <p>No evaluation data found.</p>;
 
-  const handleDownloadPdf = async () => {
+  const handleSaveReport = async () => {
     if (saving) return;
     setSaving(true);
     try {
       const savedReport = await saveReport(evaluationId, reportData);
       alert(`Report saved successfully! Report ID: ${savedReport.id}`);
-
-      generatePdf(evaluationId, reportData);
     } catch (error: any) {
       alert("Failed to save report: " + (error.message || error));
     } finally {
@@ -128,13 +75,13 @@ export default function ValuationReport() {
   return (
     <div className="container mx-auto p-6">
       <button
-        onClick={handleDownloadPdf}
+        onClick={handleSaveReport}
         disabled={saving}
         className={`mb-4 px-4 py-2 text-white rounded ${
           saving ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"
         }`}
       >
-        {saving ? "Saving..." : "Save & Download PDF"}
+        {saving ? "Saving..." : "Save Report"}
       </button>
 
       <Instructions
@@ -161,12 +108,10 @@ export default function ValuationReport() {
         value={reportData.declaration}
         onChange={(val) => setReportData((prev: any) => ({ ...prev, declaration: val }))}
       />
-
       <PropertyLocation
         property={reportData.property}
         onChange={(val) => setReportData((prev: any) => ({ ...prev, property: val }))}
       />
-
       <TenureTenanciesPlot
         landTenure={reportData.landTenure}
         owners={reportData.property?.owners || []}
@@ -178,7 +123,6 @@ export default function ValuationReport() {
           }))
         }
       />
-
       <ServiceSiteWorks
         siteWorks={reportData.siteWorks}
         onChange={(val) => setReportData((prev: any) => ({ ...prev, siteWorks: val }))}

@@ -144,24 +144,65 @@ export async function GET(
     
     let currentPage = pdfDoc.addPage();
     let { width, height } = currentPage.getSize();
-    let y = height - 80; // Start below header
+    let y = height - 95; // Start below the new larger header
     const pageMargin = 50;
     const lineHeight = 16;
     const sectionSpacing = 25;
 
+    // Load and embed the logo
+    let logoImage = null;
+    try {
+      const logoUrl = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/assets/logo_header.png`;
+      logoImage = await fetchAndEmbedImage(pdfDoc, logoUrl);
+    } catch (error) {
+      console.log("Could not load logo image:", error);
+    }
+
     // Header and Footer functions
     const addHeader = (page: any, pageNumber: number) => {
-      page.drawText("PROPERTY VALUATION REPORT", {
+      // Draw logo on the right side if available
+      if (logoImage) {
+        const logoWidth = 80;
+        const logoHeight = 40;
+        page.drawImage(logoImage, {
+          x: width - pageMargin - logoWidth,
+          y: height - 50,
+          width: logoWidth,
+          height: logoHeight
+        });
+      }
+      
+      // Company name in large bold text
+      page.drawText("TOWER PROPERTY CONSULTANCY LTD", {
         x: pageMargin,
-        y: height - 30,
-        size: 16,
+        y: height - 25,
+        size: 18,
         font: boldFont,
-        color: rgb(0, 0, 0.8)
+        color: rgb(0.1, 0.2, 0.6) // Dark blue color
       });
       
+      // Main title
+      page.drawText("VALUATION REPORT", {
+        x: pageMargin,
+        y: height - 45,
+        size: 14,
+        font: boldFont,
+        color: rgb(0.1, 0.2, 0.6)
+      });
+      
+      // Property type
+      page.drawText("RESIDENTIAL PROPERTY", {
+        x: pageMargin,
+        y: height - 62,
+        size: 12,
+        font: font,
+        color: rgb(0.1, 0.2, 0.6)
+      });
+      
+      // Report ID (moved up to avoid logo overlap)
       page.drawText(`Report ID: ${id}`, {
-        x: width - 150,
-        y: height - 30,
+        x: width - 200,
+        y: height - 65,
         size: 10,
         font: font,
         color: rgb(0.5, 0.5, 0.5)
@@ -169,35 +210,62 @@ export async function GET(
 
       // Draw line under header
       page.drawLine({
-        start: { x: pageMargin, y: height - 45 },
-        end: { x: width - pageMargin, y: height - 45 },
-        thickness: 1,
-        color: rgb(0, 0, 0.8)
+        start: { x: pageMargin, y: height - 75 },
+        end: { x: width - pageMargin, y: height - 75 },
+        thickness: 2,
+        color: rgb(0.1, 0.2, 0.6)
       });
     };
 
     const addFooter = (page: any, pageNumber: number) => {
-      const footerY = 30;
+      const footerY = 50;
       
       // Draw line above footer
       page.drawLine({
-        start: { x: pageMargin, y: footerY + 15 },
-        end: { x: width - pageMargin, y: footerY + 15 },
-        thickness: 1,
-        color: rgb(0, 0, 0.8)
+        start: { x: pageMargin, y: footerY + 35 },
+        end: { x: width - pageMargin, y: footerY + 35 },
+        thickness: 2,
+        color: rgb(0.1, 0.2, 0.6)
       });
 
+      // Contact information
+      page.drawText("Tel No: 0783520172, 0788474844, 0728520172; Email: towerpropertyconsultancy@gmail.com", {
+        x: pageMargin,
+        y: footerY + 15,
+        size: 9,
+        font: font,
+        color: rgb(0.1, 0.4, 0.8)
+      });
+
+      page.drawText("Address: Office No 03, 2nd Floor-GOLDEN PLAZA KG 11 AVE Behind BPR-Kimisagara Branch, Kimisagara, Kigali-Rwanda", {
+        x: pageMargin,
+        y: footerY + 2,
+        size: 9,
+        font: font,
+        color: rgb(0.1, 0.4, 0.8)
+      });
+
+      page.drawText("Services: Property valuation, Property Management, Property brokerage, Property investment consultancy.", {
+        x: pageMargin,
+        y: footerY - 11,
+        size: 9,
+        font: font,
+        color: rgb(0.1, 0.4, 0.8)
+      });
+
+      // Page number (centered)
       page.drawText(`Page ${pageNumber}`, {
         x: width / 2 - 20,
-        y: footerY,
+        y: footerY - 25,
         size: 10,
         font: font,
         color: rgb(0.5, 0.5, 0.5)
       });
 
+      // Date (right aligned)
       page.drawText(new Date().toLocaleDateString(), {
         x: width - 100,
-        y: footerY,
+        y: footerY - 25,
         size: 10,
         font: font,
         color: rgb(0.5, 0.5, 0.5)
@@ -206,12 +274,12 @@ export async function GET(
 
     // Add new page when needed
     const checkAndAddNewPage = () => {
-      if (y < 80) {
+      if (y < 100) { // More space needed for larger footer
         addFooter(currentPage, pdfDoc.getPageCount());
         currentPage = pdfDoc.addPage();
         ({ width, height } = currentPage.getSize());
         addHeader(currentPage, pdfDoc.getPageCount());
-        y = height - 80;
+        y = height - 95;
       }
     };
 
@@ -438,12 +506,12 @@ export async function GET(
         
         if (embeddedImage) {
           // Check if we need a new page for the image
-          if (y < 250) {
+          if (y < 280) { // More space needed for larger footer
             addFooter(currentPage, pdfDoc.getPageCount());
             currentPage = pdfDoc.addPage();
             ({ width, height } = currentPage.getSize());
             addHeader(currentPage, pdfDoc.getPageCount());
-            y = height - 80;
+            y = height - 95;
           }
 
           const imageWidth = 200;
