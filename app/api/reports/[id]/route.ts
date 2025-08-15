@@ -948,48 +948,56 @@ export async function GET(
     }
 
     // Add site work images
-    const siteWorkImages = report.siteWorks?.pictures || [];
+    // Add site work images
+const siteWorkPictures = report.siteWorks?.pictures;
 
-    if (siteWorkImages.length > 0) {
-      y -= 20;
-      currentPage.drawText("Site Work Photographs:", {
-        x: pageMargin + 20,
-        y: y,
-        size: 14, // Increased content font size
-        font: boldFont,
-        color: rgb(0, 0, 0.6),
-      });
-      y -= 25;
+if (siteWorkPictures) {
+  let imageUrls = [];
+  
+  // Handle the JSON string format from your data
+  if (typeof siteWorkPictures === 'string') {
+    try {
+      imageUrls = JSON.parse(siteWorkPictures);
+    } catch (e) {
+      console.error("Failed to parse site work pictures JSON:", e);
+      imageUrls = [];
+    }
+  } else if (Array.isArray(siteWorkPictures)) {
+    imageUrls = siteWorkPictures;
+  }
 
-      for (let i = 0; i < siteWorkImages.length; i++) {
-        let imageUrl = siteWorkImages[i];
+  if (imageUrls.length > 0) {
+    y -= 20;
+    currentPage.drawText("Site Work Photographs:", {
+      x: pageMargin + 20,
+      y: y,
+      size: 14,
+      font: boldFont,
+      color: rgb(0, 0, 0.6),
+    });
+    y -= 25;
 
-        // Parse JSON string if needed
-        if (
-          typeof imageUrl === "string" &&
-          imageUrl.startsWith("[") &&
-          imageUrl.endsWith("]")
-        ) {
-          try {
-            const parsed = JSON.parse(imageUrl);
-            imageUrl = Array.isArray(parsed) ? parsed[0] : imageUrl;
-          } catch (e) {
-            console.log("Failed to parse site work image URL as JSON:", e);
-          }
-        }
+    for (let i = 0; i < imageUrls.length; i++) {
+      const imageUrl = imageUrls[i];
+      
+      if (!imageUrl || typeof imageUrl !== 'string') {
+        console.log(`Skipping invalid image URL at index ${i}:`, imageUrl);
+        continue;
+      }
 
+      try {
         const embeddedImage = await fetchAndEmbedImage(pdfDoc, imageUrl);
 
         if (embeddedImage) {
           checkAndAddNewPage(200);
 
-          const imageWidth = 200; // Increased image size
+          const imageWidth = 200;
           const imageHeight = 150;
 
           currentPage.drawText(`Site Work Photo ${i + 1}:`, {
             x: pageMargin + 20,
             y: y,
-            size: 12, // Increased content font size
+            size: 12,
             font: font,
           });
           y -= 20;
@@ -1002,9 +1010,15 @@ export async function GET(
           });
 
           y -= imageHeight + 25;
+        } else {
+          console.error(`Failed to embed site work image ${i + 1}:`, imageUrl);
         }
+      } catch (error) {
+        console.error(`Error processing site work image ${i + 1}:`, error);
       }
     }
+  }
+}
 
     // 10. BUILDING DETAILS
     checkAndAddNewPage(100);
