@@ -1,221 +1,17 @@
 import { NextResponse } from "next/server";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { supabaseClient } from "@/lib/supabase/client";
+import type { ReportData } from "@/Reporting/report";
+import { fetchAndEmbedImage } from "@/Reporting/imageHelper";
+import { loadMontserratFont } from "@/Reporting/loadMontserratFont";
+import { parseHtmlToText } from "@/Reporting/parseHtmlToText";
+import { sanitizeText } from "@/Reporting/sanitizeText";
 
-// Complete report type based on your JSON structure
-type ReportData = {
-  instructions?: {
-    verbalInstructions?: string;
-    writtenInstructions?: string;
-    date?: string;
-    purposes?: string[];
-    inspectedDate?: string;
-    inspectedBy?: string;
-  };
-  definitionOfValues?: string;
-  basisOfValuation?: string;
-  limitingCondition?: string;
-  assumptions?: string;
-  declaration?: {
-    techName?: string;
-    techPosition?: string;
-    techDate?: string;
-    techSignature?: string;
-    techStatement?: string;
-    assistantName?: string;
-    assistantDate?: string;
-    assistantSignature?: string;
-    assistantStatement?: string;
-    finalStatement?: string;
-    finalSignature?: string;
-  };
-  property?: {
-    id?: number;
-    propertyUPI?: string;
-    upi?: string;
-    owner?: string;
-    address?: string;
-    district?: string;
-    province?: string;
-    sector?: string;
-    village?: string;
-    cell?: string;
-    country?: string;
-    location?: string;
-    coordinates?: string;
-    imgs?: string[];
-    geographical_coordinate?: string;
-    location_maps?: string;
-  };
-  landTenure?: {
-    id?: string;
-    tenure?: string;
-    occupancy?: string;
-    nla_zoning?: string;
-    plot_shape?: string;
-    encumbrances?: string;
-    tenure_years?: number;
-    plot_size_sqm?: number;
-    land_title_use?: string;
-    lot_size_notes?: string;
-    permitted_uses?: string;
-    prohibited_uses?: string;
-    land_current_use?: string;
-    tenure_start_date?: string;
-    map_from_nla?: string;
-    map_from_masterplan?: string;
-  };
-  siteWorks?: {
-    id?: string;
-    site_name?: string;
-    walls?: string[];
-    lighting?: string[];
-    finishing?: string[];
-    gate_types?: string[];
-    yard_types?: string[];
-    access_types?: string[];
-    supply_types?: string[];
-    foundation_types?: string[];
-    has_boundary_wall?: boolean;
-    cctv_installed?: string;
-    playground_sqm?: number;
-    swimming_pool_sqm?: number;
-    solar_system_installed?: string;
-    pictures?: string | string[];
-  };
-  building?: {
-    id?: string;
-    house_name?: string;
-    condition?: string;
-    doors?: string[];
-    walls?: string[];
-    ceiling?: string[];
-    windows?: string[];
-    fittings?: string[];
-    flooring?: string[];
-    foundation?: string[];
-    roof_member?: string;
-    roof_covering?: string[];
-    wall_finishing?: string[];
-    accommodation_units?: string[];
-    other_accommodation_unit?: string[];
-    pictures?: string | string[];
-  };
-  generalRemarks?: string;
-  valuationTable?: {
-    main?: Array<Array<string | number>>;
-    land?: Array<string | number>;
-    summary?: Array<Array<string | number>>;
-  };
-};
-
-// Helper function to fetch and embed images
-async function fetchAndEmbedImage(pdfDoc: PDFDocument, imageUrl: string) {
-  try {
-    const response = await fetch(imageUrl);
-    if (!response.ok) return null;
-
-    const imageBuffer = await response.arrayBuffer();
-    const uint8Array = new Uint8Array(imageBuffer);
-
-    // Try to embed as JPG first, then PNG
-    try {
-      return await pdfDoc.embedJpg(uint8Array);
-    } catch {
-      return await pdfDoc.embedPng(uint8Array);
-    }
-  } catch (error) {
-    console.error("Error embedding image:", error);
-    return null;
-  }
-}
-
-// Helper function to load custom font (Montserrat)
-async function loadMontserratFont(pdfDoc: PDFDocument) {
-  try {
-    // Try to fetch Montserrat font from Google Fonts or use fallback
-    const montserratUrl = 'https://fonts.gstatic.com/s/montserrat/v25/JTUHjIg1_i6t8kCHKm4532VJOt5-QNFgpCtr6Ew-.woff2';
-    
-    try {
-      const fontResponse = await fetch(montserratUrl);
-      if (fontResponse.ok) {
-        const fontBuffer = await fontResponse.arrayBuffer();
-        return await pdfDoc.embedFont(new Uint8Array(fontBuffer));
-      }
-    } catch (error) {
-      console.log("Could not load Montserrat font, using fallback:", error);
-    }
-    
-    // Fallback to Helvetica if Montserrat is not available
-    return await pdfDoc.embedFont(StandardFonts.Helvetica);
-  } catch (error) {
-    console.error("Error loading font:", error);
-    return await pdfDoc.embedFont(StandardFonts.Helvetica);
-  }
-}
-
-// Helper function to parse HTML content and extract text with proper formatting
-function parseHtmlToText(html: string): Array<{text: string, isBold?: boolean, isHeader?: boolean}> {
-  if (!html) return [];
-
-  const sections: Array<{text: string, isBold?: boolean, isHeader?: boolean}> = [];
-  
-  // Split by major HTML elements and process
-  let content = html
-    .replace(/<h[1-6][^>]*>/gi, "|||HEADER|||")
-    .replace(/<\/h[1-6]>/gi, "|||/HEADER|||")
-    .replace(/<li[^>]*>/gi, "\n• ")
-    .replace(/<\/li>/gi, "")
-    .replace(/<ol[^>]*>/gi, "\n")
-    .replace(/<\/ol>/gi, "\n")
-    .replace(/<ul[^>]*>/gi, "\n")
-    .replace(/<\/ul>/gi, "\n")
-    .replace(/<p[^>]*>/gi, "\n")
-    .replace(/<\/p>/gi, "\n")
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"');
-
-  const parts = content.split("|||");
-  
-  for (let i = 0; i < parts.length; i++) {
-    const part = parts[i].trim();
-    if (!part) continue;
-    
-    if (part === "HEADER") {
-      const headerText = parts[i + 1]?.replace(/<[^>]*>/g, "").trim();
-      if (headerText) {
-        sections.push({text: headerText, isHeader: true, isBold: true});
-      }
-      i++; // Skip the header content part
-    } else if (part === "/HEADER") {
-      continue;
-    } else {
-      const cleanText = part.replace(/<[^>]*>/g, "").trim();
-      if (cleanText) {
-        const lines = cleanText.split("\n").filter(line => line.trim());
-        lines.forEach(line => {
-          sections.push({text: line.trim()});
-        });
-      }
-    }
-  }
-
-  return sections;
-}
-
-// Helper function to sanitize text
-function sanitizeText(text?: string) {
-  if (!text) return "";
-  // Replace tabs/newlines with space, remove other control chars
-  return text.replace(/[\t\n\r]/g, " ").replace(/[\u0000-\u001F\u007F]/g, "");
-}
-
-export async function GET(req: Request, { params }: { params: { id: string } }) {
-  const id = (await params)?.id?.trim();
+export async function GET(
+  req: Request,
+  { params }: { params: { id: string } }
+) {
+  const id = params?.id?.trim(); // Removed 'await' here
   if (!id) {
     return NextResponse.json({ error: "Missing report ID" }, { status: 400 });
   }
@@ -394,17 +190,130 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       });
     };
 
-    // Page check function
-    const checkAndAddNewPage = (requiredSpace = 60) => {
-      if (y < footerHeight + requiredSpace + 20) { // Added extra margin to avoid footer overlap
+    // Enhanced page check function that avoids header/footer overlap
+    const checkAndAddNewPage = (requiredSpace = 80) => {
+      if (y < footerHeight + requiredSpace + 40) {
         addFooter(currentPage, pdfDoc.getPageCount());
         currentPage = pdfDoc.addPage();
         ({ width, height } = currentPage.getSize());
         addHeader(currentPage, pdfDoc.getPageCount());
-        y = height - headerHeight - 20;
+        y = height - headerHeight - 40;
         return true;
       }
       return false;
+    };
+
+    // Safe image display function with proper spacing
+    const displayImagesInGrid = (
+      imageUrls: string[],
+      title: string,
+      imagesPerRow = 2
+    ) => {
+      if (!imageUrls || imageUrls.length === 0) return;
+
+      const imageWidth = 180;
+      const imageHeight = 135;
+      const spacing = 20;
+      const rowSpacing = 45;
+
+      // Add title
+      checkAndAddNewPage(50);
+      currentPage.drawText(title, {
+        x: pageMargin + 20,
+        y: y,
+        size: 14,
+        font: boldFont,
+        color: rgb(0, 0, 0.6),
+      });
+      y -= 30;
+
+      for (let i = 0; i < imageUrls.length; i++) {
+        const imageUrl = imageUrls[i];
+        
+        if (!imageUrl || typeof imageUrl !== "string") {
+          console.log(`Skipping invalid image URL at index ${i}:`, imageUrl);
+          continue;
+        }
+
+        const currentRow = Math.floor(i / imagesPerRow);
+        const currentCol = i % imagesPerRow;
+        const isNewRow = currentCol === 0;
+
+        // Check if we need space for a new row
+        if (isNewRow) {
+          checkAndAddNewPage(imageHeight + rowSpacing);
+        }
+
+        try {
+          const embeddedImage = await fetchAndEmbedImage(pdfDoc, imageUrl);
+
+          if (embeddedImage) {
+            const totalRowWidth = imageWidth * imagesPerRow + spacing * (imagesPerRow - 1);
+            const startX = pageMargin + 20 + (contentWidth - totalRowWidth) / 2;
+            const imageX = startX + currentCol * (imageWidth + spacing);
+
+            // Calculate Y position for this image
+            const imageY = y - (isNewRow ? 0 : imageHeight + 20);
+
+            // Ensure we're not in the footer area
+            if (imageY - imageHeight < footerHeight + 20) {
+              addFooter(currentPage, pdfDoc.getPageCount());
+              currentPage = pdfDoc.addPage();
+              ({ width, height } = currentPage.getSize());
+              addHeader(currentPage, pdfDoc.getPageCount());
+              y = height - headerHeight - 40;
+              
+              // Recalculate position on new page
+              const newImageY = y;
+              
+              // Add border with color fill around image
+              currentPage.drawRectangle({
+                x: imageX - 3,
+                y: newImageY - imageHeight - 3,
+                width: imageWidth + 6,
+                height: imageHeight + 6,
+                color: rgb(0.95, 0.97, 1),
+                borderColor: rgb(0.1, 0.2, 0.6),
+                borderWidth: 1,
+              });
+
+              currentPage.drawImage(embeddedImage, {
+                x: imageX,
+                y: newImageY - imageHeight,
+                width: imageWidth,
+                height: imageHeight,
+              });
+              
+              y = newImageY - imageHeight - 20;
+            } else {
+              // Add border with color fill around image
+              currentPage.drawRectangle({
+                x: imageX - 3,
+                y: imageY - imageHeight - 3,
+                width: imageWidth + 6,
+                height: imageHeight + 6,
+                color: rgb(0.95, 0.97, 1),
+                borderColor: rgb(0.1, 0.2, 0.6),
+                borderWidth: 1,
+              });
+
+              currentPage.drawImage(embeddedImage, {
+                x: imageX,
+                y: imageY - imageHeight,
+                width: imageWidth,
+                height: imageHeight,
+              });
+
+              // Update y position after completing a row
+              if (currentCol === imagesPerRow - 1 || i === imageUrls.length - 1) {
+                y = imageY - imageHeight - 30;
+              }
+            }
+          }
+        } catch (error) {
+          console.error(`Error processing image ${i + 1}:`, error);
+        }
+      }
     };
 
     // Title writing function
@@ -478,7 +387,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       }
     };
 
-    // Enhanced function to write HTML content with proper styling
+    // Enhanced function to write HTML content without bullet points
     const writeHtmlContent = (
       label: string,
       htmlContent: string,
@@ -511,11 +420,22 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
             color: rgb(0.2, 0.2, 0.7),
           });
           y -= lineHeight + 5;
+        } else if (section.text.match(/^\d+\.\s/)) {
+          // Handle numbered lists (1. 2. 3. etc)
+          const numberedText = section.text.replace(/^(\d+)\.\s*/, "$1. ");
+          writeText("", numberedText, indent + 20);
         } else if (section.text.startsWith("• ")) {
+          // Remove bullet point and just display as normal text
           const listText = section.text.substring(2);
-          writeText("", `• ${listText}`, indent + 20);
-        } else if (section.text.match(/^\d+\./)) {
-          writeText("", section.text, indent + 20);
+          writeText("", listText, indent + 20);
+        } else if (section.text.match(/^[ivx]+\.\s/i)) {
+          // Handle roman numeral lists (i. ii. iii. etc)
+          const romanText = section.text.replace(/^([ivx]+)\.\s*/i, "$1. ");
+          writeText("", romanText, indent + 20);
+        } else if (section.text.match(/^[a-z]\.\s/i)) {
+          // Handle letter lists (a. b. c. etc)
+          const letterText = section.text.replace(/^([a-z])\.\s*/i, "$1. ");
+          writeText("", letterText, indent + 20);
         } else {
           // Regular paragraph text
           const maxWidth = contentWidth - indent - 20;
@@ -563,7 +483,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       y -= 10;
     };
 
-    // Function to handle arrays with bold headers
+    // Function to handle arrays without bullet points
     const writeArray = (
       label: string,
       values: string[] | string | undefined,
@@ -591,9 +511,9 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       }
 
       if (arrayValues.length === 0) return;
-      
+
       checkAndAddNewPage(25);
-      
+
       // Bold header
       currentPage.drawText(`${label}:`, {
         x: pageMargin + indent,
@@ -602,11 +522,11 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
         font: boldFont,
       });
       y -= lineHeight;
-      
-      // List items below
-      arrayValues.forEach(value => {
+
+      // List items without bullets
+      arrayValues.forEach((value) => {
         checkAndAddNewPage(25);
-        currentPage.drawText(`• ${value}`, {
+        currentPage.drawText(value, {
           x: pageMargin + indent + 20,
           y: y,
           size: 12,
@@ -614,7 +534,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
         });
         y -= lineHeight;
       });
-      
+
       y -= 5; // Extra space after list
     };
 
@@ -765,43 +685,48 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 
     // Property title section on cover
     const propertyTitle = `VALUATION REPORT OF A RESIDENTIAL PROPERTY`;
-    const propertyUPI = report.property?.propertyUPI || report.property?.upi || "N/A";
-    const location = `${report.property?.village || ""}, ${report.property?.sector || ""}, ${report.property?.district || ""}, ${report.property?.province || ""}`.replace(/^, |, $/g, "");
-    
+    const propertyUPI =
+      report.property?.propertyUPI || report.property?.upi || "N/A";
+    const location = `${report.property?.village || ""}, ${
+      report.property?.sector || ""
+    }, ${report.property?.district || ""}, ${
+      report.property?.province || ""
+    }`.replace(/^, |, $/g, "");
+
     currentPage.drawText(propertyTitle, {
       x: pageMargin,
       y: y,
       size: 16,
       font: boldFont,
-      color: rgb(0, 0, 0.8)
+      color: rgb(0, 0, 0.8),
     });
     y -= 25;
-    
+
     currentPage.drawText(`PROPERTY UPI: ${propertyUPI}`, {
       x: pageMargin,
       y: y,
       size: 14,
       font: boldFont,
-      color: rgb(0.6, 0, 0)
+      color: rgb(0.6, 0, 0),
     });
     y -= 20;
-    
+
     currentPage.drawText(`LOCATED: ${location}`, {
       x: pageMargin,
       y: y,
       size: 12,
       font: font,
-      color: rgb(0.2, 0.2, 0.2)
+      color: rgb(0.2, 0.2, 0.2),
     });
     y -= 40;
 
     // Collect building images only (limit to 3)
     const buildingImages: string[] = [];
-    
+
     // Only collect building images
     if (report.building?.pictures) {
       let buildingImageUrls: string[] = [];
-      if (typeof report.building.pictures === 'string') {
+      if (typeof report.building.pictures === "string") {
         try {
           buildingImageUrls = JSON.parse(report.building.pictures);
         } catch (e) {
@@ -810,19 +735,34 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       } else if (Array.isArray(report.building.pictures)) {
         buildingImageUrls = report.building.pictures;
       }
-      buildingImages.push(...buildingImageUrls.filter(img => img && typeof img === 'string').slice(0, 3));
+      buildingImages.push(
+        ...buildingImageUrls
+          .filter((img) => img && typeof img === "string")
+          .slice(0, 3)
+      );
     }
 
     // Display images (1 large + 2 small in grid)
     if (buildingImages.length > 0) {
-      // Main property image (smaller width as requested)
+      // Main property image
       const mainImageUrl = buildingImages[0];
       try {
         const mainImage = await fetchAndEmbedImage(pdfDoc, mainImageUrl);
         if (mainImage) {
-          const mainImageWidth = 300; // Reduced width
-          const mainImageHeight = 200; // Proportional height
+          const mainImageWidth = 220;
+          const mainImageHeight = 150;
           const imageX = (width - mainImageWidth) / 2;
+
+          // Add border around main image with color fill
+          currentPage.drawRectangle({
+            x: imageX - 5,
+            y: y - mainImageHeight - 5,
+            width: mainImageWidth + 10,
+            height: mainImageHeight + 10,
+            color: rgb(0.95, 0.97, 1),
+            borderColor: rgb(0.1, 0.2, 0.6),
+            borderWidth: 2,
+          });
 
           currentPage.drawImage(mainImage, {
             x: imageX,
@@ -831,7 +771,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
             height: mainImageHeight,
           });
 
-          y -= mainImageHeight + 20;
+          y -= mainImageHeight + 15;
         }
       } catch (error) {
         console.error("Error loading main cover image:", error);
@@ -839,17 +779,33 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 
       // Grid of 2 additional images in a row
       if (buildingImages.length > 1) {
-        const gridImages = buildingImages.slice(1, 3); // Take up to 2 more images
-        const thumbnailWidth = 140; // Equal size for grid images
-        const thumbnailHeight = 140; // Equal size for grid images
-        const spacing = 20;
-        const totalGridWidth = (thumbnailWidth * gridImages.length) + (spacing * (gridImages.length - 1));
-        let currentX = (width - totalGridWidth) / 2; // Center the grid
+        const gridImages = buildingImages.slice(1, 3);
+        const thumbnailWidth = 100;
+        const thumbnailHeight = 100;
+        const spacing = 15;
+        const totalGridWidth =
+          thumbnailWidth * gridImages.length +
+          spacing * (gridImages.length - 1);
+        let currentX = (width - totalGridWidth) / 2;
 
         for (let i = 0; i < gridImages.length; i++) {
           try {
-            const thumbnailImage = await fetchAndEmbedImage(pdfDoc, gridImages[i]);
+            const thumbnailImage = await fetchAndEmbedImage(
+              pdfDoc,
+              gridImages[i]
+            );
             if (thumbnailImage) {
+              // Add border around thumbnail with color fill
+              currentPage.drawRectangle({
+                x: currentX - 3,
+                y: y - thumbnailHeight - 3,
+                width: thumbnailWidth + 6,
+                height: thumbnailHeight + 6,
+                color: rgb(0.95, 0.97, 1),
+                borderColor: rgb(0.1, 0.2, 0.6),
+                borderWidth: 1,
+              });
+
               currentPage.drawImage(thumbnailImage, {
                 x: currentX,
                 y: y - thumbnailHeight,
@@ -862,19 +818,35 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
             console.error(`Error loading grid image ${i + 1}:`, error);
           }
         }
-        y -= thumbnailHeight + 30;
+        y -= thumbnailHeight + 20;
       }
     }
 
-    // Property Overview Box (ensure it doesn't go into footer)
-    const boxHeight = 180;
-    if (y - boxHeight < footerHeight + 20) {
-      addFooter(currentPage, pageNumber++);
-      currentPage = pdfDoc.addPage();
-      ({ width, height } = currentPage.getSize());
-      addHeader(currentPage, pageNumber);
-      y = height - headerHeight - 20;
+    // Property Overview Box with full height left side padding
+    const boxHeight = 160;
+    const availableSpace = y - footerHeight - 30;
+
+    if (availableSpace < boxHeight) {
+      y = height - headerHeight - 60;
+      if (buildingImages.length > 0) {
+        y -= 190;
+        if (buildingImages.length > 1) {
+          y -= 120;
+        }
+      }
     }
+
+    // FULL HEIGHT LEFT SIDE PADDING - This fills the entire left side height
+    const leftPaddingWidth = pageMargin - 10;
+    const fullPageHeight = height; // Full page height
+    
+    currentPage.drawRectangle({
+      x: 0,
+      y: 0, // Start from bottom of page
+      width: leftPaddingWidth,
+      height: fullPageHeight, // Full page height
+      color: rgb(0.1, 0.2, 0.6), // Blue color fill for entire left side
+    });
 
     currentPage.drawRectangle({
       x: pageMargin,
@@ -883,6 +855,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       height: boxHeight,
       borderColor: rgb(0.1, 0.2, 0.6),
       borderWidth: 2,
+      color: rgb(0.98, 0.99, 1),
     });
 
     currentPage.drawText("PROPERTY OVERVIEW", {
@@ -893,20 +866,26 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       color: rgb(0, 0, 0.8),
     });
 
-    y -= 50;
+    y -= 45;
 
     // Property details in two columns
     const leftColumnX = pageMargin + 20;
-    const rightColumnX = pageMargin + (contentWidth / 2) + 10;
+    const rightColumnX = pageMargin + contentWidth / 2 + 10;
     let leftY = y;
     let rightY = y;
 
     // Left column details
     const leftColumnItems = [
-      { label: "Property Owner", value: report.instructions?.verbalInstructions || "N/A" },
+      {
+        label: "Property Owner",
+        value: report.instructions?.verbalInstructions || "N/A",
+      },
       { label: "Village", value: report.property?.village || "N/A" },
       { label: "Cell", value: report.property?.cell || "N/A" },
-      { label: "Plot Size", value: `${report.landTenure?.plot_size_sqm || "N/A"} sqm` }
+      {
+        label: "Plot Size",
+        value: `${report.landTenure?.plot_size_sqm || "N/A"} sqm`,
+      },
     ];
 
     // Right column details
@@ -914,11 +893,16 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       { label: "Prepared By", value: report.declaration?.techName || "N/A" },
       { label: "Sector", value: report.property?.sector || "N/A" },
       { label: "District", value: report.property?.district || "N/A" },
-      { label: "Date", value: new Date(report.instructions?.date || Date.now()).toLocaleDateString() }
+      {
+        label: "Date",
+        value: new Date(
+          report.instructions?.date || Date.now()
+        ).toLocaleDateString(),
+      },
     ];
 
     // Draw left column
-    leftColumnItems.forEach(item => {
+    leftColumnItems.forEach((item) => {
       currentPage.drawText(`${item.label}:`, {
         x: leftColumnX,
         y: leftY,
@@ -934,11 +918,11 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
         font: font,
         color: rgb(0, 0, 0),
       });
-      leftY -= 20;
+      leftY -= 18;
     });
 
     // Draw right column
-    rightColumnItems.forEach(item => {
+    rightColumnItems.forEach((item) => {
       currentPage.drawText(`${item.label}:`, {
         x: rightColumnX,
         y: rightY,
@@ -954,7 +938,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
         font: font,
         color: rgb(0, 0, 0),
       });
-      rightY -= 20;
+      rightY -= 18;
     });
 
     // Add footer to cover page
@@ -971,9 +955,21 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     // 1. INSTRUCTIONS
     writeTitle("1. VALUATION INSTRUCTIONS");
     if (report.instructions) {
-      writeText("Verbal Instructions", report.instructions.verbalInstructions || "N/A", 20);
-      writeText("Written Instructions", report.instructions.writtenInstructions || "N/A", 20);
-      writeText("Inspection Date", report.instructions.inspectedDate || "N/A", 20);
+      writeText(
+        "Verbal Instructions",
+        report.instructions.verbalInstructions || "N/A",
+        20
+      );
+      writeText(
+        "Written Instructions",
+        report.instructions.writtenInstructions || "N/A",
+        20
+      );
+      writeText(
+        "Inspection Date",
+        report.instructions.inspectedDate || "N/A",
+        20
+      );
       writeText("Inspected By", report.instructions.inspectedBy || "N/A", 20);
       writeText("Report Date", report.instructions.date || "N/A", 20);
       writeArray("Purposes", report.instructions.purposes, 20);
@@ -1008,11 +1004,14 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
         writeText("Position", report.declaration.techPosition || "N/A", 20);
         writeText("Date", report.declaration.techDate || "N/A", 20);
         writeText("Statement", report.declaration.techStatement || "N/A", 20);
-        
+
         // Add technician signature image
         if (report.declaration.techSignature) {
           try {
-            const techSigImage = await fetchAndEmbedImage(pdfDoc, report.declaration.techSignature);
+            const techSigImage = await fetchAndEmbedImage(
+              pdfDoc,
+              report.declaration.techSignature
+            );
             if (techSigImage) {
               checkAndAddNewPage(80);
               currentPage.drawText("Technician Signature:", {
@@ -1022,7 +1021,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
                 font: boldFont,
               });
               y -= 15;
-              
+
               currentPage.drawImage(techSigImage, {
                 x: pageMargin + 20,
                 y: y - 60,
@@ -1037,16 +1036,31 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
         }
       }
 
-      if (report.declaration.assistantName && report.declaration.assistantName !== "_________") {
+      if (
+        report.declaration.assistantName &&
+        report.declaration.assistantName !== "_________"
+      ) {
         y -= 15;
-        writeText("Assistant Valuer", report.declaration.assistantName, 20, true);
+        writeText(
+          "Assistant Valuer",
+          report.declaration.assistantName,
+          20,
+          true
+        );
         writeText("Date", report.declaration.assistantDate || "N/A", 20);
-        writeText("Statement", report.declaration.assistantStatement || "N/A", 20);
-        
+        writeText(
+          "Statement",
+          report.declaration.assistantStatement || "N/A",
+          20
+        );
+
         // Add assistant signature image
         if (report.declaration.assistantSignature) {
           try {
-            const assistantSigImage = await fetchAndEmbedImage(pdfDoc, report.declaration.assistantSignature);
+            const assistantSigImage = await fetchAndEmbedImage(
+              pdfDoc,
+              report.declaration.assistantSignature
+            );
             if (assistantSigImage) {
               checkAndAddNewPage(80);
               currentPage.drawText("Assistant Signature:", {
@@ -1056,7 +1070,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
                 font: boldFont,
               });
               y -= 15;
-              
+
               currentPage.drawImage(assistantSigImage, {
                 x: pageMargin + 20,
                 y: y - 60,
@@ -1074,11 +1088,14 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       if (report.declaration.finalStatement) {
         y -= 15;
         writeText("Final Declaration", report.declaration.finalStatement, 20);
-        
+
         // Add final signature image
         if (report.declaration.finalSignature) {
           try {
-            const finalSigImage = await fetchAndEmbedImage(pdfDoc, report.declaration.finalSignature);
+            const finalSigImage = await fetchAndEmbedImage(
+              pdfDoc,
+              report.declaration.finalSignature
+            );
             if (finalSigImage) {
               checkAndAddNewPage(80);
               currentPage.drawText("Final Signature:", {
@@ -1088,7 +1105,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
                 font: boldFont,
               });
               y -= 15;
-              
+
               currentPage.drawImage(finalSigImage, {
                 x: pageMargin + 20,
                 y: y - 60,
@@ -1108,16 +1125,35 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     checkAndAddNewPage(100);
     writeTitle("7. PROPERTY LOCATION");
     if (report.property) {
-      writeText("Property Owner", report.instructions?.verbalInstructions || "N/A", 20, true);
-      writeText("UPI Number", report.property.propertyUPI || report.property.upi || "N/A", 20);
-      writeText("Address", report.property.address || report.property.location || "N/A", 20);
+      writeText(
+        "Property Owner",
+        report.instructions?.verbalInstructions || "N/A",
+        20,
+        true
+      );
+      writeText(
+        "UPI Number",
+        report.property.propertyUPI || report.property.upi || "N/A",
+        20
+      );
+      writeText(
+        "Address",
+        report.property.address || report.property.location || "N/A",
+        20
+      );
       writeText("Village", report.property.village || "N/A", 20);
       writeText("Cell", report.property.cell || "N/A", 20);
       writeText("Sector", report.property.sector || "N/A", 20);
       writeText("District", report.property.district || "N/A", 20);
       writeText("Province", report.property.province || "N/A", 20);
       writeText("Country", report.property.country || "Rwanda", 20);
-      writeText("Geographical Coordinates", report.property.geographical_coordinate || report.property.coordinates || "N/A", 20);
+      writeText(
+        "Geographical Coordinates",
+        report.property.geographical_coordinate ||
+          report.property.coordinates ||
+          "N/A",
+        20
+      );
     }
 
     // 8. TENURE AND TENANCIES
@@ -1126,17 +1162,51 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     if (report.landTenure) {
       writeText("Tenure Type", report.landTenure.tenure || "N/A", 20, true);
       writeText("Occupancy", report.landTenure.occupancy || "N/A", 20);
-      writeText("Plot Size", report.landTenure.plot_size_sqm ? `${report.landTenure.plot_size_sqm} sqm` : "N/A", 20);
+      writeText(
+        "Plot Size",
+        report.landTenure.plot_size_sqm
+          ? `${report.landTenure.plot_size_sqm} sqm`
+          : "N/A",
+        20
+      );
       writeText("Plot Shape", report.landTenure.plot_shape || "N/A", 20);
       writeText("NLA Zoning", report.landTenure.nla_zoning || "N/A", 20);
-      writeText("Land Title Use", report.landTenure.land_title_use || "N/A", 20);
-      writeText("Current Land Use", report.landTenure.land_current_use || "N/A", 20);
-      writeText("Tenure Years", report.landTenure.tenure_years?.toString() || "N/A", 20);
-      writeText("Tenure Start Date", report.landTenure.tenure_start_date || "N/A", 20);
+      writeText(
+        "Land Title Use",
+        report.landTenure.land_title_use || "N/A",
+        20
+      );
+      writeText(
+        "Current Land Use",
+        report.landTenure.land_current_use || "N/A",
+        20
+      );
+      writeText(
+        "Tenure Years",
+        report.landTenure.tenure_years?.toString() || "N/A",
+        20
+      );
+      writeText(
+        "Tenure Start Date",
+        report.landTenure.tenure_start_date || "N/A",
+        20
+      );
       writeText("Encumbrances", report.landTenure.encumbrances || "N/A", 20);
-      writeText("Permitted Uses", report.landTenure.permitted_uses || "N/A", 20);
-      writeText("Prohibited Uses", report.landTenure.prohibited_uses || "N/A", 20);
-      writeText("Lot Size Notes", report.landTenure.lot_size_notes || "N/A", 20);
+      writeText(
+        "Permitted Uses",
+        report.landTenure.permitted_uses || "N/A",
+        20
+      );
+      writeText(
+        "Prohibited Uses",
+        report.landTenure.prohibited_uses || "N/A",
+        20
+      );
+      writeText(
+        "Lot Size Notes",
+        report.landTenure.lot_size_notes || "N/A",
+        20
+      );
     }
 
     // 9. SERVICES AND SITE WORKS
@@ -1144,7 +1214,11 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     writeTitle("9. SERVICES AND SITE WORKS");
     if (report.siteWorks) {
       writeText("Site Name", report.siteWorks.site_name || "N/A", 20, true);
-      writeText("Boundary Wall", report.siteWorks.has_boundary_wall ? "Yes" : "No", 20);
+      writeText(
+        "Boundary Wall",
+        report.siteWorks.has_boundary_wall ? "Yes" : "No",
+        20
+      );
       writeArray("Wall Materials", report.siteWorks.walls, 20);
       writeArray("Wall Finishing", report.siteWorks.finishing, 20);
       writeArray("Foundation Types", report.siteWorks.foundation_types, 20);
@@ -1154,80 +1228,142 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       writeArray("Access Types", report.siteWorks.access_types, 20);
       writeArray("Utility Supplies", report.siteWorks.supply_types, 20);
       writeText("CCTV System", report.siteWorks.cctv_installed || "N/A", 20);
-      writeText("Solar System", report.siteWorks.solar_system_installed || "N/A", 20);
-      writeText("Playground Area", report.siteWorks.playground_sqm ? `${report.siteWorks.playground_sqm} sqm` : "N/A", 20);
-      writeText("Swimming Pool Area", report.siteWorks.swimming_pool_sqm ? `${report.siteWorks.swimming_pool_sqm} sqm` : "N/A", 20);
+      writeText(
+        "Solar System",
+        report.siteWorks.solar_system_installed || "N/A",
+        20
+      );
+      writeText(
+        "Playground Area",
+        report.siteWorks.playground_sqm
+          ? `${report.siteWorks.playground_sqm} sqm`
+          : "N/A",
+        20
+      );
+      writeText(
+        "Swimming Pool Area",
+        report.siteWorks.swimming_pool_sqm
+          ? `${report.siteWorks.swimming_pool_sqm} sqm`
+          : "N/A",
+        20
+      );
     }
+
+    // PROPERLY DISPLAY SITE WORK IMAGES UNDER SITE WORKS SECTION
+    // const siteWorkPictures = report.siteWorks?.pictures;
+    // if (siteWorkPictures) {
+    //   let siteImageUrls: string[] = [];
+
+    //   if (typeof siteWorkPictures === "string") {
+    //     try {
+    //       siteImageUrls = JSON.parse(siteWorkPictures);
+    //     } catch (e) {
+    //       console.error("Failed to parse site work pictures JSON:", e);
+    //       siteImageUrls = [];
+    //     }
+    //   } else if (Array.isArray(siteWorkPictures)) {
+    //     siteImageUrls = siteWorkPictures;
+    //   }
+
+    //   if (siteImageUrls.length > 0) {
+    //     const validSiteImages = siteImageUrls.filter(
+    //       (img) => img && typeof img === "string"
+    //     );
+    //     if (validSiteImages.length > 0) {
+    //       displayImagesInGrid(validSiteImages, "Site Work Photographs:");
+    //     }
+    //   }
+    // }
 
     // Add site work images
-    const siteWorkPictures = report.siteWorks?.pictures;
-    if (siteWorkPictures) {
-      let imageUrls: string[] = [];
-      
-      if (typeof siteWorkPictures === 'string') {
-        try {
-          imageUrls = JSON.parse(siteWorkPictures);
-        } catch (e) {
-          console.error("Failed to parse site work pictures JSON:", e);
-          imageUrls = [];
-        }
-      } else if (Array.isArray(siteWorkPictures)) {
-        imageUrls = siteWorkPictures;
+const siteWorkPictures = report.siteWorks?.pictures;
+if (siteWorkPictures) {
+  let imageUrls: string[] = [];
+
+  if (typeof siteWorkPictures === "string") {
+    try {
+      imageUrls = JSON.parse(siteWorkPictures);
+    } catch (e) {
+      console.error("Failed to parse site work pictures JSON:", e);
+      imageUrls = [];
+    }
+  } else if (Array.isArray(siteWorkPictures)) {
+    imageUrls = siteWorkPictures;
+  }
+
+  if (imageUrls.length > 0) {
+    checkAndAddNewPage(50);
+    currentPage.drawText("Site Work Photographs:", {
+      x: pageMargin + 20,
+      y: y,
+      size: 14,
+      font: boldFont,
+      color: rgb(0, 0, 0.6),
+    });
+    y -= 25;
+
+    const imageWidth = 200;
+    const imageHeight = 150;
+    const gapX = 40; // horizontal gap between images
+    const gapY = 40; // vertical gap between rows
+
+    let col = 0; // track column (0 = left, 1 = right)
+    let startX = pageMargin + 20;
+
+    for (let i = 0; i < imageUrls.length; i++) {
+      const imageUrl = imageUrls[i];
+
+      if (!imageUrl || typeof imageUrl !== "string") {
+        console.log(`Skipping invalid image URL at index ${i}:`, imageUrl);
+        continue;
       }
 
-      if (imageUrls.length > 0) {
-        checkAndAddNewPage(50);
-        currentPage.drawText("Site Work Photographs:", {
-          x: pageMargin + 20,
-          y: y,
-          size: 14,
-          font: boldFont,
-          color: rgb(0, 0, 0.6),
-        });
-        y -= 25;
+      try {
+        const embeddedImage = await fetchAndEmbedImage(pdfDoc, imageUrl);
 
-        for (let i = 0; i < imageUrls.length; i++) {
-          const imageUrl = imageUrls[i];
-          
-          if (!imageUrl || typeof imageUrl !== 'string') {
-            console.log(`Skipping invalid image URL at index ${i}:`, imageUrl);
-            continue;
+        if (embeddedImage) {
+          // check if there's enough vertical space
+          checkAndAddNewPage(imageHeight + gapY);
+
+          const xPos = startX + col * (imageWidth + gapX);
+          const yPos = y - imageHeight;
+
+          currentPage.drawText(`Photo ${i + 1}:`, {
+            x: xPos,
+            y: y,
+            size: 12,
+            font: font,
+          });
+
+          currentPage.drawImage(embeddedImage, {
+            x: xPos,
+            y: yPos,
+            width: imageWidth,
+            height: imageHeight,
+          });
+
+          // Move column
+          if (col === 0) {
+            col = 1; // move to right column
+          } else {
+            col = 0;
+            y -= imageHeight + gapY; // new row
           }
-
-          try {
-            const embeddedImage = await fetchAndEmbedImage(pdfDoc, imageUrl);
-
-            if (embeddedImage) {
-              checkAndAddNewPage(200);
-
-              const imageWidth = 200;
-              const imageHeight = 150;
-
-              currentPage.drawText(`Site Work Photo ${i + 1}:`, {
-                x: pageMargin + 20,
-                y: y,
-                size: 12,
-                font: font,
-              });
-              y -= 20;
-
-              currentPage.drawImage(embeddedImage, {
-                x: pageMargin + 20,
-                y: y - imageHeight,
-                width: imageWidth,
-                height: imageHeight,
-              });
-
-              y -= imageHeight + 25;
-            } else {
-              console.error(`Failed to embed site work image ${i + 1}:`, imageUrl);
-            }
-          } catch (error) {
-            console.error(`Error processing site work image ${i + 1}:`, error);
-          }
+        } else {
+          console.error(`Failed to embed site work image ${i + 1}:`, imageUrl);
         }
+      } catch (error) {
+        console.error(`Error processing site work image ${i + 1}:`, error);
       }
     }
+
+    // If last row had only 1 image, move y down to avoid overlap with next section
+    if (col === 1) {
+      y -= imageHeight + gapY;
+    }
+  }
+}
+
 
     // 10. BUILDING DETAILS
     checkAndAddNewPage(100);
@@ -1245,79 +1381,106 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       writeArray("Door Types", report.building.doors, 20);
       writeArray("Window Types", report.building.windows, 20);
       writeArray("Fittings & Fixtures", report.building.fittings, 20);
-      writeArray("Accommodation Units", report.building.accommodation_units, 20);
+      writeArray(
+        "Accommodation Units",
+        report.building.accommodation_units,
+        20
+      );
       writeArray("Other Units", report.building.other_accommodation_unit, 20);
     }
 
-    // Add building images
-    const buildingPictures = report.building?.pictures;
-    if (buildingPictures) {
-      let buildingImageUrls: string[] = [];
-      
-      if (typeof buildingPictures === 'string') {
-        try {
-          buildingImageUrls = JSON.parse(buildingPictures);
-        } catch (e) {
-          console.error("Failed to parse building pictures JSON:", e);
-          buildingImageUrls = [];
-        }
-      } else if (Array.isArray(buildingPictures)) {
-        buildingImageUrls = buildingPictures;
+    // PROPERLY DISPLAY BUILDING IMAGES UNDER BUILDING SECTION
+   // Add building images
+const buildingPictures = report.building?.pictures;
+if (buildingPictures) {
+  let buildingImageUrls: string[] = [];
+
+  if (typeof buildingPictures === "string") {
+    try {
+      buildingImageUrls = JSON.parse(buildingPictures);
+    } catch (e) {
+      console.error("Failed to parse building pictures JSON:", e);
+      buildingImageUrls = [];
+    }
+  } else if (Array.isArray(buildingPictures)) {
+    buildingImageUrls = buildingPictures;
+  }
+
+  if (buildingImageUrls.length > 0) {
+    checkAndAddNewPage(50);
+    currentPage.drawText("Building Photographs:", {
+      x: pageMargin + 20,
+      y: y,
+      size: 14,
+      font: boldFont,
+      color: rgb(0, 0, 0.6),
+    });
+    y -= 25;
+
+    const imageWidth = 200;
+    const imageHeight = 150;
+    const gapX = 40; // horizontal space between columns
+    const gapY = 40; // vertical space between rows
+
+    let col = 0; // 0 = left, 1 = right
+    let startX = pageMargin + 20;
+
+    for (let i = 0; i < buildingImageUrls.length; i++) {
+      const imageUrl = buildingImageUrls[i];
+
+      if (!imageUrl || typeof imageUrl !== "string") {
+        console.log(`Skipping invalid building image URL at index ${i}:`, imageUrl);
+        continue;
       }
 
-      if (buildingImageUrls.length > 0) {
-        checkAndAddNewPage(50);
-        currentPage.drawText("Building Photographs:", {
-          x: pageMargin + 20,
-          y: y,
-          size: 14,
-          font: boldFont,
-          color: rgb(0, 0, 0.6),
-        });
-        y -= 25;
+      try {
+        const embeddedImage = await fetchAndEmbedImage(pdfDoc, imageUrl);
 
-        for (let i = 0; i < buildingImageUrls.length; i++) {
-          const imageUrl = buildingImageUrls[i];
-          
-          if (!imageUrl || typeof imageUrl !== 'string') {
-            console.log(`Skipping invalid building image URL at index ${i}:`, imageUrl);
-            continue;
+        if (embeddedImage) {
+          // check if page has enough space
+          checkAndAddNewPage(imageHeight + gapY);
+
+          const xPos = startX + col * (imageWidth + gapX);
+          const yPos = y - imageHeight;
+
+          // Draw label above each image
+          currentPage.drawText(`Building Photo ${i + 1}:`, {
+            x: xPos,
+            y: y,
+            size: 12,
+            font: font,
+          });
+
+          // Draw the image
+          currentPage.drawImage(embeddedImage, {
+            x: xPos,
+            y: yPos,
+            width: imageWidth,
+            height: imageHeight,
+          });
+
+          // Move to next column / row
+          if (col === 0) {
+            col = 1; // move to right column
+          } else {
+            col = 0;
+            y -= imageHeight + gapY; // new row
           }
-
-          try {
-            const embeddedImage = await fetchAndEmbedImage(pdfDoc, imageUrl);
-
-            if (embeddedImage) {
-              checkAndAddNewPage(200);
-
-              const imageWidth = 200;
-              const imageHeight = 150;
-
-              currentPage.drawText(`Building Photo ${i + 1}:`, {
-                x: pageMargin + 20,
-                y: y,
-                size: 12,
-                font: font,
-              });
-              y -= 20;
-
-              currentPage.drawImage(embeddedImage, {
-                x: pageMargin + 20,
-                y: y - imageHeight,
-                width: imageWidth,
-                height: imageHeight,
-              });
-
-              y -= imageHeight + 25;
-            } else {
-              console.error(`Failed to embed building image ${i + 1}:`, imageUrl);
-            }
-          } catch (error) {
-            console.error(`Error processing building image ${i + 1}:`, error);
-          }
+        } else {
+          console.error(`Failed to embed building image ${i + 1}:`, imageUrl);
         }
+      } catch (error) {
+        console.error(`Error processing building image ${i + 1}:`, error);
       }
     }
+
+    // If last row only had one image, adjust y down
+    if (col === 1) {
+      y -= imageHeight + gapY;
+    }
+  }
+}
+
 
     // 11. GENERAL REMARKS
     if (report.generalRemarks) {
