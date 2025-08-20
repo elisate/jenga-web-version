@@ -130,14 +130,40 @@ async function fetchAndEmbedImage(pdfDoc: PDFDocument, imageUrl: string) {
   }
 }
 
+// Helper function to load custom font (Montserrat)
+async function loadMontserratFont(pdfDoc: PDFDocument) {
+  try {
+    // Try to fetch Montserrat font from Google Fonts or use fallback
+    const montserratUrl = 'https://fonts.gstatic.com/s/montserrat/v25/JTUHjIg1_i6t8kCHKm4532VJOt5-QNFgpCtr6Ew-.woff2';
+    
+    try {
+      const fontResponse = await fetch(montserratUrl);
+      if (fontResponse.ok) {
+        const fontBuffer = await fontResponse.arrayBuffer();
+        return await pdfDoc.embedFont(new Uint8Array(fontBuffer));
+      }
+    } catch (error) {
+      console.log("Could not load Montserrat font, using fallback:", error);
+    }
+    
+    // Fallback to Helvetica if Montserrat is not available
+    return await pdfDoc.embedFont(StandardFonts.Helvetica);
+  } catch (error) {
+    console.error("Error loading font:", error);
+    return await pdfDoc.embedFont(StandardFonts.Helvetica);
+  }
+}
+
 // Helper function to parse HTML content and extract text with proper formatting
-function parseHtmlToText(html: string): string[] {
+function parseHtmlToText(html: string): Array<{text: string, isBold?: boolean, isHeader?: boolean}> {
   if (!html) return [];
 
-  // Split by major HTML elements and clean
-  let sections = html
-    .replace(/<h[1-6][^>]*>/gi, "\n\n**")
-    .replace(/<\/h[1-6]>/gi, "**\n")
+  const sections: Array<{text: string, isBold?: boolean, isHeader?: boolean}> = [];
+  
+  // Split by major HTML elements and process
+  let content = html
+    .replace(/<h[1-6][^>]*>/gi, "|||HEADER|||")
+    .replace(/<\/h[1-6]>/gi, "|||/HEADER|||")
     .replace(/<li[^>]*>/gi, "\n• ")
     .replace(/<\/li>/gi, "")
     .replace(/<ol[^>]*>/gi, "\n")
@@ -147,15 +173,36 @@ function parseHtmlToText(html: string): string[] {
     .replace(/<p[^>]*>/gi, "\n")
     .replace(/<\/p>/gi, "\n")
     .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<[^>]*>/g, "") // Remove remaining HTML tags
     .replace(/&nbsp;/g, " ")
     .replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
+    .replace(/&quot;/g, '"');
+
+  const parts = content.split("|||");
+  
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i].trim();
+    if (!part) continue;
+    
+    if (part === "HEADER") {
+      const headerText = parts[i + 1]?.replace(/<[^>]*>/g, "").trim();
+      if (headerText) {
+        sections.push({text: headerText, isHeader: true, isBold: true});
+      }
+      i++; // Skip the header content part
+    } else if (part === "/HEADER") {
+      continue;
+    } else {
+      const cleanText = part.replace(/<[^>]*>/g, "").trim();
+      if (cleanText) {
+        const lines = cleanText.split("\n").filter(line => line.trim());
+        lines.forEach(line => {
+          sections.push({text: line.trim()});
+        });
+      }
+    }
+  }
 
   return sections;
 }
@@ -193,12 +240,12 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   try {
     // Create PDF
     const pdfDoc = await PDFDocument.create();
-    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const font = await loadMontserratFont(pdfDoc);
     const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
     let currentPage = pdfDoc.addPage();
     let { width, height } = currentPage.getSize();
-    let y = height - 100; // Start lower to avoid header
+    let y = height - 100;
 
     // Layout constants
     const pageMargin = 60;
@@ -349,7 +396,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 
     // Page check function
     const checkAndAddNewPage = (requiredSpace = 60) => {
-      if (y < footerHeight + requiredSpace) {
+      if (y < footerHeight + requiredSpace + 20) { // Added extra margin to avoid footer overlap
         addFooter(currentPage, pdfDoc.getPageCount());
         currentPage = pdfDoc.addPage();
         ({ width, height } = currentPage.getSize());
@@ -382,7 +429,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     ) => {
       if (!value || value === "N/A") return;
 
-      checkAndAddNewPage();
+      checkAndAddNewPage(25);
 
       const text = `${label}: ${value}`;
       const maxWidth = contentWidth - indent;
@@ -420,7 +467,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 
       // Draw each line
       for (const line of lines) {
-        checkAndAddNewPage();
+        checkAndAddNewPage(25);
         currentPage.drawText(line, {
           x: pageMargin + indent,
           y: y,
@@ -431,7 +478,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       }
     };
 
-    // Function to write HTML content
+    // Enhanced function to write HTML content with proper styling
     const writeHtmlContent = (
       label: string,
       htmlContent: string,
@@ -443,7 +490,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       if (sections.length === 0) return;
 
       if (label) {
-        checkAndAddNewPage();
+        checkAndAddNewPage(25);
         currentPage.drawText(`${label}:`, {
           x: pageMargin + indent,
           y: y,
@@ -453,32 +500,70 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
         y -= lineHeight + 5;
       }
 
-      for (let section of sections) {
-        if (section.startsWith("**") && section.endsWith("**")) {
-          section = section.replace(/\*\*/g, "");
+      for (const section of sections) {
+        if (section.isHeader) {
           checkAndAddNewPage(40);
-          currentPage.drawText(section, {
+          currentPage.drawText(section.text, {
             x: pageMargin + indent + 20,
             y: y,
-            size: 13,
+            size: 14,
             font: boldFont,
             color: rgb(0.2, 0.2, 0.7),
           });
           y -= lineHeight + 5;
-        } else if (section.startsWith("• ")) {
-          section = section.substring(2);
-          writeText("", `• ${section}`, indent + 20);
-        } else if (section.match(/^\d+\./)) {
-          writeText("", section, indent + 20);
+        } else if (section.text.startsWith("• ")) {
+          const listText = section.text.substring(2);
+          writeText("", `• ${listText}`, indent + 20);
+        } else if (section.text.match(/^\d+\./)) {
+          writeText("", section.text, indent + 20);
         } else {
-          writeText("", section, indent + 20);
+          // Regular paragraph text
+          const maxWidth = contentWidth - indent - 20;
+          const words = section.text.split(" ");
+          let lines: string[] = [];
+          let currentLine = "";
+
+          for (const word of words) {
+            const testLine = currentLine + word + " ";
+            const safeTestLine = sanitizeText(testLine);
+
+            let textWidth: number;
+            try {
+              textWidth = font.widthOfTextAtSize(safeTestLine, 12);
+            } catch (err) {
+              textWidth = 0;
+            }
+
+            if (textWidth > maxWidth && currentLine !== "") {
+              lines.push(sanitizeText(currentLine.trim()));
+              currentLine = word + " ";
+            } else {
+              currentLine = testLine;
+            }
+          }
+
+          if (currentLine.trim()) {
+            lines.push(sanitizeText(currentLine.trim()));
+          }
+
+          // Draw each line
+          for (const line of lines) {
+            checkAndAddNewPage(25);
+            currentPage.drawText(line, {
+              x: pageMargin + indent + 20,
+              y: y,
+              size: 12,
+              font: font,
+            });
+            y -= lineHeight;
+          }
         }
       }
 
       y -= 10;
     };
 
-    // Function to handle arrays
+    // Function to handle arrays with bold headers
     const writeArray = (
       label: string,
       values: string[] | string | undefined,
@@ -506,7 +591,31 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       }
 
       if (arrayValues.length === 0) return;
-      writeText(label, arrayValues.join(", "), indent);
+      
+      checkAndAddNewPage(25);
+      
+      // Bold header
+      currentPage.drawText(`${label}:`, {
+        x: pageMargin + indent,
+        y: y,
+        size: 12,
+        font: boldFont,
+      });
+      y -= lineHeight;
+      
+      // List items below
+      arrayValues.forEach(value => {
+        checkAndAddNewPage(25);
+        currentPage.drawText(`• ${value}`, {
+          x: pageMargin + indent + 20,
+          y: y,
+          size: 12,
+          font: font,
+        });
+        y -= lineHeight;
+      });
+      
+      y -= 5; // Extra space after list
     };
 
     // Valuation table function
@@ -649,7 +758,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       y = tableY - 30;
     };
 
-    // COVER PAGE CREATION
+    // ENHANCED COVER PAGE CREATION
     let pageNumber = 1;
     addHeader(currentPage, pageNumber);
     y = height - headerHeight - 20;
@@ -686,52 +795,33 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     });
     y -= 40;
 
-    // Handle cover images from property data
-    const allPropertyImages: string[] = [];
+    // Collect building images only (limit to 3)
+    const buildingImages: string[] = [];
     
-    // Collect images from siteWorks
-    if (report.siteWorks?.pictures) {
-      let siteWorkImages: string[] = [];
-      if (typeof report.siteWorks.pictures === 'string') {
-        try {
-          siteWorkImages = JSON.parse(report.siteWorks.pictures);
-        } catch (e) {
-          console.error("Failed to parse siteWorks pictures:", e);
-        }
-      } else if (Array.isArray(report.siteWorks.pictures)) {
-        siteWorkImages = report.siteWorks.pictures;
-      }
-      allPropertyImages.push(...siteWorkImages.filter(img => img && typeof img === 'string'));
-    }
-
-    // Collect images from building
+    // Only collect building images
     if (report.building?.pictures) {
-      let buildingImages: string[] = [];
+      let buildingImageUrls: string[] = [];
       if (typeof report.building.pictures === 'string') {
         try {
-          buildingImages = JSON.parse(report.building.pictures);
+          buildingImageUrls = JSON.parse(report.building.pictures);
         } catch (e) {
           console.error("Failed to parse building pictures:", e);
         }
       } else if (Array.isArray(report.building.pictures)) {
-        buildingImages = report.building.pictures;
+        buildingImageUrls = report.building.pictures;
       }
-      allPropertyImages.push(...buildingImages.filter(img => img && typeof img === 'string'));
+      buildingImages.push(...buildingImageUrls.filter(img => img && typeof img === 'string').slice(0, 3));
     }
 
-    // Also include legacy property images if available
-    if (report.property?.imgs) {
-      allPropertyImages.push(...report.property.imgs.filter(img => img && typeof img === 'string'));
-    }
-
-    if (allPropertyImages.length > 0) {
-      // Main property image
-      const mainImageUrl = allPropertyImages[0];
+    // Display images (1 large + 2 small in grid)
+    if (buildingImages.length > 0) {
+      // Main property image (smaller width as requested)
+      const mainImageUrl = buildingImages[0];
       try {
         const mainImage = await fetchAndEmbedImage(pdfDoc, mainImageUrl);
         if (mainImage) {
-          const mainImageWidth = 400;
-          const mainImageHeight = 250;
+          const mainImageWidth = 300; // Reduced width
+          const mainImageHeight = 200; // Proportional height
           const imageX = (width - mainImageWidth) / 2;
 
           currentPage.drawImage(mainImage, {
@@ -741,45 +831,56 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
             height: mainImageHeight,
           });
 
-          y -= mainImageHeight + 30;
+          y -= mainImageHeight + 20;
         }
       } catch (error) {
         console.error("Error loading main cover image:", error);
       }
 
-      // Additional images in a row (thumbnails)
-      if (allPropertyImages.length > 1) {
-        const thumbnailCount = Math.min(3, allPropertyImages.length - 1);
-        const thumbnailWidth = (contentWidth - 20) / thumbnailCount;
-        const thumbnailHeight = 100;
-        let currentX = pageMargin;
+      // Grid of 2 additional images in a row
+      if (buildingImages.length > 1) {
+        const gridImages = buildingImages.slice(1, 3); // Take up to 2 more images
+        const thumbnailWidth = 140; // Equal size for grid images
+        const thumbnailHeight = 140; // Equal size for grid images
+        const spacing = 20;
+        const totalGridWidth = (thumbnailWidth * gridImages.length) + (spacing * (gridImages.length - 1));
+        let currentX = (width - totalGridWidth) / 2; // Center the grid
 
-        for (let i = 1; i <= thumbnailCount && i < allPropertyImages.length; i++) {
+        for (let i = 0; i < gridImages.length; i++) {
           try {
-            const thumbnailImage = await fetchAndEmbedImage(pdfDoc, allPropertyImages[i]);
+            const thumbnailImage = await fetchAndEmbedImage(pdfDoc, gridImages[i]);
             if (thumbnailImage) {
               currentPage.drawImage(thumbnailImage, {
                 x: currentX,
                 y: y - thumbnailHeight,
-                width: thumbnailWidth - 10,
+                width: thumbnailWidth,
                 height: thumbnailHeight,
               });
-              currentX += thumbnailWidth;
+              currentX += thumbnailWidth + spacing;
             }
           } catch (error) {
-            console.error(`Error loading thumbnail ${i}:`, error);
+            console.error(`Error loading grid image ${i + 1}:`, error);
           }
         }
-        y -= thumbnailHeight + 40;
+        y -= thumbnailHeight + 30;
       }
     }
 
-    // Property Overview Box
+    // Property Overview Box (ensure it doesn't go into footer)
+    const boxHeight = 180;
+    if (y - boxHeight < footerHeight + 20) {
+      addFooter(currentPage, pageNumber++);
+      currentPage = pdfDoc.addPage();
+      ({ width, height } = currentPage.getSize());
+      addHeader(currentPage, pageNumber);
+      y = height - headerHeight - 20;
+    }
+
     currentPage.drawRectangle({
       x: pageMargin,
-      y: y - 200,
+      y: y - boxHeight,
       width: contentWidth,
-      height: 180,
+      height: boxHeight,
       borderColor: rgb(0.1, 0.2, 0.6),
       borderWidth: 2,
     });
@@ -898,27 +999,108 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     writeTitle("5. ASSUMPTIONS");
     writeHtmlContent("", report.assumptions || "N/A", 0);
 
-    // 6. DECLARATIONS
-    checkAndAddNewPage(100);
+    // 6. ENHANCED DECLARATIONS WITH SIGNATURE IMAGES
+    checkAndAddNewPage(150);
     writeTitle("6. PROFESSIONAL DECLARATIONS");
     if (report.declaration) {
       if (report.declaration.techName) {
-        writeText("Technician Valuer", report.declaration.techName, 20);
+        writeText("Technician Valuer", report.declaration.techName, 20, true);
         writeText("Position", report.declaration.techPosition || "N/A", 20);
         writeText("Date", report.declaration.techDate || "N/A", 20);
         writeText("Statement", report.declaration.techStatement || "N/A", 20);
+        
+        // Add technician signature image
+        if (report.declaration.techSignature) {
+          try {
+            const techSigImage = await fetchAndEmbedImage(pdfDoc, report.declaration.techSignature);
+            if (techSigImage) {
+              checkAndAddNewPage(80);
+              currentPage.drawText("Technician Signature:", {
+                x: pageMargin + 20,
+                y: y,
+                size: 12,
+                font: boldFont,
+              });
+              y -= 15;
+              
+              currentPage.drawImage(techSigImage, {
+                x: pageMargin + 20,
+                y: y - 60,
+                width: 120,
+                height: 60,
+              });
+              y -= 70;
+            }
+          } catch (error) {
+            console.error("Error loading technician signature:", error);
+          }
+        }
       }
 
-      if (report.declaration.assistantName) {
+      if (report.declaration.assistantName && report.declaration.assistantName !== "_________") {
         y -= 15;
-        writeText("Assistant Valuer", report.declaration.assistantName, 20);
+        writeText("Assistant Valuer", report.declaration.assistantName, 20, true);
         writeText("Date", report.declaration.assistantDate || "N/A", 20);
         writeText("Statement", report.declaration.assistantStatement || "N/A", 20);
+        
+        // Add assistant signature image
+        if (report.declaration.assistantSignature) {
+          try {
+            const assistantSigImage = await fetchAndEmbedImage(pdfDoc, report.declaration.assistantSignature);
+            if (assistantSigImage) {
+              checkAndAddNewPage(80);
+              currentPage.drawText("Assistant Signature:", {
+                x: pageMargin + 20,
+                y: y,
+                size: 12,
+                font: boldFont,
+              });
+              y -= 15;
+              
+              currentPage.drawImage(assistantSigImage, {
+                x: pageMargin + 20,
+                y: y - 60,
+                width: 120,
+                height: 60,
+              });
+              y -= 70;
+            }
+          } catch (error) {
+            console.error("Error loading assistant signature:", error);
+          }
+        }
       }
 
       if (report.declaration.finalStatement) {
         y -= 15;
         writeText("Final Declaration", report.declaration.finalStatement, 20);
+        
+        // Add final signature image
+        if (report.declaration.finalSignature) {
+          try {
+            const finalSigImage = await fetchAndEmbedImage(pdfDoc, report.declaration.finalSignature);
+            if (finalSigImage) {
+              checkAndAddNewPage(80);
+              currentPage.drawText("Final Signature:", {
+                x: pageMargin + 20,
+                y: y,
+                size: 12,
+                font: boldFont,
+              });
+              y -= 15;
+              
+              currentPage.drawImage(finalSigImage, {
+                x: pageMargin + 20,
+                y: y - 60,
+                width: 120,
+                height: 60,
+              });
+              y -= 70;
+            }
+          } catch (error) {
+            console.error("Error loading final signature:", error);
+          }
+        }
       }
     }
 
@@ -926,7 +1108,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     checkAndAddNewPage(100);
     writeTitle("7. PROPERTY LOCATION");
     if (report.property) {
-      writeText("Property Owner", report.instructions?.verbalInstructions || "N/A", 20);
+      writeText("Property Owner", report.instructions?.verbalInstructions || "N/A", 20, true);
       writeText("UPI Number", report.property.propertyUPI || report.property.upi || "N/A", 20);
       writeText("Address", report.property.address || report.property.location || "N/A", 20);
       writeText("Village", report.property.village || "N/A", 20);
@@ -942,7 +1124,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     checkAndAddNewPage(100);
     writeTitle("8. TENURE AND TENANCIES");
     if (report.landTenure) {
-      writeText("Tenure Type", report.landTenure.tenure || "N/A", 20);
+      writeText("Tenure Type", report.landTenure.tenure || "N/A", 20, true);
       writeText("Occupancy", report.landTenure.occupancy || "N/A", 20);
       writeText("Plot Size", report.landTenure.plot_size_sqm ? `${report.landTenure.plot_size_sqm} sqm` : "N/A", 20);
       writeText("Plot Shape", report.landTenure.plot_shape || "N/A", 20);
@@ -961,7 +1143,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     checkAndAddNewPage(100);
     writeTitle("9. SERVICES AND SITE WORKS");
     if (report.siteWorks) {
-      writeText("Site Name", report.siteWorks.site_name || "N/A", 20);
+      writeText("Site Name", report.siteWorks.site_name || "N/A", 20, true);
       writeText("Boundary Wall", report.siteWorks.has_boundary_wall ? "Yes" : "No", 20);
       writeArray("Wall Materials", report.siteWorks.walls, 20);
       writeArray("Wall Finishing", report.siteWorks.finishing, 20);
@@ -994,7 +1176,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       }
 
       if (imageUrls.length > 0) {
-        y -= 20;
+        checkAndAddNewPage(50);
         currentPage.drawText("Site Work Photographs:", {
           x: pageMargin + 20,
           y: y,
@@ -1051,7 +1233,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     checkAndAddNewPage(100);
     writeTitle("10. BUILDING DETAILS");
     if (report.building) {
-      writeText("Building Name", report.building.house_name || "N/A", 20);
+      writeText("Building Name", report.building.house_name || "N/A", 20, true);
       writeText("Overall Condition", report.building.condition || "N/A", 20);
       writeText("Roof Structure", report.building.roof_member || "N/A", 20);
       writeArray("Foundation", report.building.foundation, 20);
@@ -1084,7 +1266,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       }
 
       if (buildingImageUrls.length > 0) {
-        y -= 20;
+        checkAndAddNewPage(50);
         currentPage.drawText("Building Photographs:", {
           x: pageMargin + 20,
           y: y,
