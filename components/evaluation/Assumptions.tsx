@@ -7,6 +7,7 @@ import StarterKit from "@tiptap/starter-kit";
 interface Point {
   id: string;
   text: string;
+  assumptions?: string; // Add this field
 }
 
 interface AssumptionsProps {

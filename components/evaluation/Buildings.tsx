@@ -21,6 +21,7 @@ interface BuildingData {
 
 interface BuildingsProps {
   data: BuildingData | null | undefined;
+  
   onChange?: (val: BuildingData | null | undefined) => void;
 }
 

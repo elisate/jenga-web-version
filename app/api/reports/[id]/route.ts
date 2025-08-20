@@ -151,14 +151,11 @@ function parseHtmlToText(html: string): string[] {
   return sections;
 }
 
-export async function GET(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
-  const id = params.id?.trim();
-  if (!id)
+export async function GET(req: Request, { params }: { params: { id: string } }) {
+  const id = (await params)?.id?.trim();
+  if (!id) {
     return NextResponse.json({ error: "Missing report ID" }, { status: 400 });
-
+  }
   // Fetch report from Supabase
   const { data, error } = await supabaseClient
     .from("reports")
@@ -369,17 +366,35 @@ export async function GET(
       let lines: string[] = [];
       let currentLine = "";
 
-      for (const word of words) {
-        const testLine = currentLine + word + " ";
-        const textWidth = textFont.widthOfTextAtSize(testLine, fontSize);
+    // Helper function to sanitize text
+function sanitizeText(text?: string) {
+  if (!text) return "";
+  // Replace tabs/newlines with space, remove other control chars
+  return text.replace(/[\t\n\r]/g, " ").replace(/[\u0000-\u001F\u007F]/g, "");
+}
 
-        if (textWidth > maxWidth && currentLine !== "") {
-          lines.push(currentLine.trim());
-          currentLine = word + " ";
-        } else {
-          currentLine = testLine;
-        }
-      }
+for (const word of words) {
+  const testLine = currentLine + word + " ";
+
+  // SANITIZE the text before measuring width
+  const safeTestLine = sanitizeText(testLine);
+
+  let textWidth: number;
+  try {
+    textWidth = textFont.widthOfTextAtSize(safeTestLine, fontSize);
+  } catch (err) {
+    console.error("PDF encoding failed for line:", safeTestLine, err);
+    textWidth = 0; // fallback so it doesn't crash
+  }
+
+  if (textWidth > maxWidth && currentLine !== "") {
+    lines.push(sanitizeText(currentLine.trim())); // sanitize before pushing
+    currentLine = word + " ";
+  } else {
+    currentLine = testLine;
+  }
+}
+
 
       if (currentLine.trim()) {
         lines.push(currentLine.trim());
@@ -724,34 +739,6 @@ export async function GET(
         y -= 22;
       }
     }
-
-    // Add valuation summary to cover page
-    // if (report.valuationTable?.summary) {
-    //   y -= 20;
-    //   currentPage.drawText("VALUATION SUMMARY", {
-    //     x: pageMargin,
-    //     y: y,
-    //     size: 14,
-    //     font: boldFont,
-    //     color: rgb(0, 0, 0.7)
-    //   });
-    //   y -= 25;
-
-    //   for (const row of report.valuationTable.summary) {
-    //     if (row[0] && row[7]) {
-    //       const value = typeof row[7] === 'number' ? row[7].toLocaleString() : row[7];
-    //       currentPage.drawText(`${row[0]}: RWF ${value}`, {
-    //         x: pageMargin + 20,
-    //         y: y,
-    //         size: 12,
-    //         font: font,
-    //         color: rgb(0.2, 0.5, 0.2)
-    //       });
-    //       y -= 20;
-    //     }
-    //   }
-    // }
-
     // Add footer to cover page
     addFooter(currentPage, pageNumber++);
 

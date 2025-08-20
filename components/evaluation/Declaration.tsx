@@ -1,162 +1,183 @@
 "use client";
-import React, { useState, ChangeEvent } from "react";
+import React, { useState, useEffect, ChangeEvent } from "react";
+import { useEditor, EditorContent } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import { useUploadImagesToStorage } from "@/Reporting/uploading";
 
-// Define the shape of the form data
+// Declaration data structure
 export interface DeclarationData {
   techName: string;
   techPosition: string;
   techDate: string;
-  techSignature: File | null;
+  techSignature: string | null;
   techStatement: string;
   assistantName: string;
   assistantDate: string;
-  assistantSignature: File | null;
+  assistantSignature: string | null;
   assistantStatement: string;
   finalStatement: string;
-  finalSignature: File | null;
+  finalSignature: string | null;
 }
 
-// Props for the component
+// Props
 interface DeclarationProps {
+  user: any | null;
   value?: DeclarationData;
+  createdAt?: string | null;
   onChange?: (val: DeclarationData) => void;
 }
 
-const Declaration: React.FC<DeclarationProps> = ({ value, onChange }) => {
-  const [formData, setFormData] = useState<DeclarationData>(
-    value || {
-      techName: "",
-      techPosition: "Technician Valuer",
-      techDate: "",
-      techSignature: null,
-      techStatement: `Technician Valuer, hereby declare that I have personally captured and collected accurate and real information data related to the property / asset assessment, including but not limited to the following: Building dimensions; Photographs of the property; Geographic coordinates; Additional relevant data collected during the assessment.\nI hold myself responsible and confirm that the information provided is true and certain to the best of my knowledge and belief.`,
-      assistantName: "",
-      assistantDate: "",
-      assistantSignature: null,
-      assistantStatement: `I have thoroughly reviewed and cross-checked this Valuation Report prepared by HABINSHUTI EVARISTE.\nI have: Examined the property description for accuracy and completeness; verified the maps, survey plans, and location details to ensure consistency with the valuation, assessed all supporting documents (title deeds, zoning certificates, etc.) for relevance and correctness, Scrutinized the computations, adjustments, and valuation methodology applied to confirm compliance with industry standards and regulatory requirements.\nAny discrepancies or concerns identified during the review have been addressed and resolved to ensure the integrity of the final valuation. I solemnly declare that the above statements are true and correct to the best of my knowledge and belief.`,
-      finalStatement: `I, Valuer Phocas NIYONGOMBWA, hereby certify that I have no direct or indirect interest, financial or otherwise, in the property being valued or the parties involved that would compromise my impartiality and independence in conducting this property valuation. I have not been influenced by any party to the transaction, and my valuation is based solely on my professional judgment and analysis.`,
-      finalSignature: null,
+const Declaration: React.FC<DeclarationProps> = ({
+  user,
+  value,
+  createdAt,
+  onChange,
+}) => {
+  // ⬇️ Hook for uploading images
+  const {
+    uploading,
+    uploadedImages,
+    setUploadedImages,
+    uploadImagesToStorage,
+  } = useUploadImagesToStorage();
+
+  const getInitialData = (): DeclarationData => ({
+    techName: user
+      ? `${user.first_name ?? ""} ${user.last_name ?? ""}`.trim()
+      : "_________",
+    techPosition: user?.title || "n/a",
+    techDate: createdAt
+      ? new Date(createdAt).toLocaleDateString()
+      : value?.techDate || "",
+    techSignature: user?.signature || null,
+    techStatement:
+      value?.techStatement ||
+      user?.declaration_content ||
+      `"Technician Valuer, hereby declare that I have personally captured and collected accurate and real information data related to the property / asset assessment, including but not limited to the following: Building dimensions; 	Photographs of the property; Geographic coordinates; Additional relevant data collected during the assessment.
+I hold myself responsible and confirm that the information provided is true and certain to the best of my knowledge and belief."
+`,
+    assistantName: value?.assistantName || "_________",
+    assistantDate: value?.assistantDate || "",
+    assistantSignature: value?.assistantSignature || null,
+    assistantStatement:
+      value?.assistantStatement ||
+      `I, Assistant Valuer name
+have thoroughly reviewed and cross-checked this Valuation Report prepared by 
+HABINSHUTI EVARISTE
+I have: Examined the property description for accuracy and completeness; verified the maps, survey plans, and location details to ensure consistency with the valuation, assessed all supporting documents (title deeds, zoning certificates, etc.) for relevance and correctness, Scrutinized the computations, adjustments, and valuation methodology applied to confirm compliance with industry standards and regulatory requirements. Any discrepancies or concerns identified during the review have been addressed and resolved to ensure the integrity of the final valuation. I solemnly declare that the above statements are true and correct to the best of my knowledge and belief. 
+`,
+    finalStatement:
+      value?.finalStatement ||
+      `
+I, Valuer Phocas NIYONGOMBWA, hereby certify that I have no direct or indirect interest, financial or otherwise, in the property being valued or the parties involved that would compromise my impartiality and independence in conducting this property valuation. I have not been influenced by any party to the transaction, and my valuation is based solely on my professional judgment and analysis.
+`,
+    finalSignature: value?.finalSignature || null,
+  });
+
+  const [formData, setFormData] = useState<DeclarationData>(getInitialData());
+
+  useEffect(() => {
+    setFormData(getInitialData());
+  }, [user, value, createdAt]);
+
+  const editor = useEditor({
+    extensions: [StarterKit],
+    content: formData.techStatement,
+    onUpdate: ({ editor }) => updateField("techStatement", editor.getHTML()),
+  });
+
+  useEffect(() => {
+    if (editor && formData.techStatement) {
+      editor.commands.setContent(formData.techStatement);
     }
-  );
+  }, [formData.techStatement, editor]);
 
-  const handleChange = (
-    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value: val, files } = e.target as HTMLInputElement;
-    const newValue = files && files.length > 0 ? files[0] : val;
-
+  const updateField = (name: keyof DeclarationData, val: any) => {
     setFormData((prev) => {
-      const updated = { ...prev, [name]: newValue } as DeclarationData;
-      if (onChange) onChange(updated); // propagate change to parent
+      const updated = { ...prev, [name]: val };
+      onChange?.(updated);
       return updated;
     });
   };
 
+  const handleChange = (
+    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
+    updateField(name as keyof DeclarationData, value);
+  };
+
+  const renderSignature = (signature: string | null) =>
+    signature ? (
+      <img
+        src={signature}
+        alt="Signature"
+        className="w-32 h-16 object-contain border"
+      />
+    ) : (
+      <p>_________</p>
+    );
+
+  // ⬇️ New handler for uploading signatures
+  const handleSignatureUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    field: "assistantSignature" | "finalSignature"
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // set file to hook state
+    setUploadedImages([file]);
+
+    // upload & get URLs
+    const urls = await uploadImagesToStorage();
+    if (urls.length > 0) {
+      updateField(field, urls[0]); // save the uploaded image URL
+    }
+  };
+
   return (
     <div className="border border-gray-300 rounded-md overflow-hidden mb-8">
-      {/* Title */}
-      <div className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white px-4 py-2 font-bold text-lg">
+      <div className="bg-gradient-to-r from-violet-600 to-purple-600 text-white px-4 py-2 font-bold text-lg">
         DECLARATIONS
       </div>
 
       <div className="bg-white text-black p-4 text-sm">
-        {/* 1. Declaration of Data Collection */}
-        <h3 className="font-semibold mb-2">1. DECLARATION OF DATA COLLECTION AND ACCURACY</h3>
-        <table className="w-full border-collapse mb-4">
-          <tbody>
-            <tr>
-              <td className="border border-gray-300 p-2 w-1/3 font-semibold">Automatic</td>
-              <td className="border border-gray-300 p-2">
-                <input
-                  type="text"
-                  name="techName"
-                  value={formData.techName}
-                  onChange={handleChange}
-                  placeholder="Tech Name"
-                  className="w-full border p-1 rounded"
-                />
-              </td>
-            </tr>
-            <tr>
-              <td className="border border-gray-300 p-2 font-semibold">Position</td>
-              <td className="border border-gray-300 p-2">
-                <input
-                  type="text"
-                  name="techPosition"
-                  value={formData.techPosition}
-                  onChange={handleChange}
-                  className="w-full border p-1 rounded"
-                />
-              </td>
-            </tr>
-            <tr>
-              <td className="border border-gray-300 p-2 font-semibold align-top">Statement</td>
-              <td className="border border-gray-300 p-2">
-                <textarea
-                  name="techStatement"
-                  value={formData.techStatement}
-                  onChange={handleChange}
-                  className="w-full border p-1 rounded min-h-[100px]"
-                />
-              </td>
-            </tr>
-            <tr>
-              <td className="border border-gray-300 p-2 font-semibold">Date</td>
-              <td className="border border-gray-300 p-2">
-                <input
-                  type="date"
-                  name="techDate"
-                  value={formData.techDate}
-                  onChange={handleChange}
-                  className="border p-1 rounded"
-                />
-              </td>
-            </tr>
-            <tr>
-              <td className="border border-gray-300 p-2 font-semibold">Signature</td>
-              <td className="border border-gray-300 p-2">
-                <input
-                  type="file"
-                  name="techSignature"
-                  accept="image/*"
-                  onChange={handleChange}
-                  className="border p-1 rounded"
-                />
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        {/* Technical Declaration */}
+        <Section title="1. Declaration of Data Collection and Accuracy">
+          <p>
+            I, <strong>{formData.techName.toUpperCase()}</strong> (
+            {formData.techPosition}), hereby declare that:
+          </p>
+          <div className="border border-gray-200 rounded p-2 mb-2">
+            <EditorContent editor={editor} />
+          </div>
 
-        {/* 2. Declaration Report Cross Checking */}
-        <h3 className="font-semibold mb-2">2. DECLARATION REPORT CROSS CHECKING</h3>
-        <table className="w-full border-collapse mb-4">
-          <tbody>
-            <tr>
-              <td className="border border-gray-300 p-2 w-1/3 font-semibold">Name</td>
-              <td className="border border-gray-300 p-2">
-                <input
-                  type="text"
-                  name="assistantName"
-                  value={formData.assistantName}
-                  onChange={handleChange}
-                  className="w-full border p-1 rounded"
-                />
-              </td>
-            </tr>
-            <tr>
-              <td className="border border-gray-300 p-2 font-semibold">Statement</td>
-              <td className="border border-gray-300 p-2">
-                <textarea
-                  name="assistantStatement"
-                  value={formData.assistantStatement}
-                  onChange={handleChange}
-                  className="w-full border p-1 rounded min-h-[100px]"
-                />
-              </td>
-            </tr>
-            <tr>
-              <td className="border border-gray-300 p-2 font-semibold">Date</td>
-              <td className="border border-gray-300 p-2">
+          <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <p>
+                <strong>Position:</strong> {formData.techPosition}
+              </p>
+              <p>
+                <strong>Date Evaluated:</strong> {formData.techDate || "N/A"}
+              </p>
+            </div>
+            <div>
+              <p>
+                <strong>Signature:</strong>
+              </p>
+              {renderSignature(formData.techSignature)}
+            </div>
+          </div>
+        </Section>
+
+        {/* Assistant Declaration */}
+        <Section title="2. Declaration Report Cross-Checking">
+          <p>{formData.assistantStatement}</p>
+          <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <p>
+                <strong>Date:</strong>{" "}
                 <input
                   type="date"
                   name="assistantDate"
@@ -164,55 +185,56 @@ const Declaration: React.FC<DeclarationProps> = ({ value, onChange }) => {
                   onChange={handleChange}
                   className="border p-1 rounded"
                 />
-              </td>
-            </tr>
-            <tr>
-              <td className="border border-gray-300 p-2 font-semibold">Signature</td>
-              <td className="border border-gray-300 p-2">
-                <input
-                  type="file"
-                  name="assistantSignature"
-                  accept="image/*"
-                  onChange={handleChange}
-                  className="border p-1 rounded"
-                />
-              </td>
-            </tr>
-          </tbody>
-        </table>
+              </p>
+            </div>
+            <div>
+              <p>
+                <strong>Signature:</strong>
+              </p>
+              {renderSignature(formData.assistantSignature)}
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => handleSignatureUpload(e, "assistantSignature")}
+                className="mt-2"
+                disabled={uploading}
+              />
+            </div>
+          </div>
+        </Section>
 
         {/* Final Declaration */}
-        <h3 className="font-semibold mb-2">Final Declaration</h3>
-        <table className="w-full border-collapse">
-          <tbody>
-            <tr>
-              <td className="border border-gray-300 p-2 font-semibold">Statement</td>
-              <td className="border border-gray-300 p-2">
-                <textarea
-                  name="finalStatement"
-                  value={formData.finalStatement}
-                  onChange={handleChange}
-                  className="w-full border p-1 rounded min-h-[80px]"
-                />
-              </td>
-            </tr>
-            <tr>
-              <td className="border border-gray-300 p-2 font-semibold">Signature</td>
-              <td className="border border-gray-300 p-2">
-                <input
-                  type="file"
-                  name="finalSignature"
-                  accept="image/*"
-                  onChange={handleChange}
-                  className="border p-1 rounded"
-                />
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <Section title="Final Declaration">
+          <p>{formData.finalStatement}</p>
+          <div className="mt-4 grid grid-cols-1 gap-4 text-sm">
+            <div>
+              <p>
+                <strong>Signature:</strong>
+              </p>
+              {renderSignature(formData.finalSignature)}
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => handleSignatureUpload(e, "finalSignature")}
+                className="mt-2"
+                disabled={uploading}
+              />
+            </div>
+          </div>
+        </Section>
       </div>
     </div>
   );
 };
+
+const Section: React.FC<{ title: string; children: React.ReactNode }> = ({
+  title,
+  children,
+}) => (
+  <div className="border border-gray-300 p-4 mb-4">
+    <h3 className="font-semibold mb-2">{title}</h3>
+    {children}
+  </div>
+);
 
 export default Declaration;
