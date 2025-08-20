@@ -20,14 +20,18 @@ type ReportData = {
     techName?: string;
     techPosition?: string;
     techDate?: string;
+    techSignature?: string;
     techStatement?: string;
     assistantName?: string;
     assistantDate?: string;
+    assistantSignature?: string;
     assistantStatement?: string;
     finalStatement?: string;
+    finalSignature?: string;
   };
   property?: {
     id?: number;
+    propertyUPI?: string;
     upi?: string;
     owner?: string;
     address?: string;
@@ -37,11 +41,14 @@ type ReportData = {
     village?: string;
     cell?: string;
     country?: string;
+    location?: string;
+    coordinates?: string;
     imgs?: string[];
     geographical_coordinate?: string;
     location_maps?: string;
   };
   landTenure?: {
+    id?: string;
     tenure?: string;
     occupancy?: string;
     nla_zoning?: string;
@@ -59,6 +66,7 @@ type ReportData = {
     map_from_masterplan?: string;
   };
   siteWorks?: {
+    id?: string;
     site_name?: string;
     walls?: string[];
     lighting?: string[];
@@ -73,9 +81,10 @@ type ReportData = {
     playground_sqm?: number;
     swimming_pool_sqm?: number;
     solar_system_installed?: string;
-    pictures?: string[];
+    pictures?: string | string[];
   };
   building?: {
+    id?: string;
     house_name?: string;
     condition?: string;
     doors?: string[];
@@ -90,7 +99,7 @@ type ReportData = {
     wall_finishing?: string[];
     accommodation_units?: string[];
     other_accommodation_unit?: string[];
-    pictures?: string[];
+    pictures?: string | string[];
   };
   generalRemarks?: string;
   valuationTable?: {
@@ -151,11 +160,19 @@ function parseHtmlToText(html: string): string[] {
   return sections;
 }
 
+// Helper function to sanitize text
+function sanitizeText(text?: string) {
+  if (!text) return "";
+  // Replace tabs/newlines with space, remove other control chars
+  return text.replace(/[\t\n\r]/g, " ").replace(/[\u0000-\u001F\u007F]/g, "");
+}
+
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   const id = (await params)?.id?.trim();
   if (!id) {
     return NextResponse.json({ error: "Missing report ID" }, { status: 400 });
   }
+
   // Fetch report from Supabase
   const { data, error } = await supabaseClient
     .from("reports")
@@ -183,11 +200,11 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     let { width, height } = currentPage.getSize();
     let y = height - 100; // Start lower to avoid header
 
-    // Improved layout constants
-    const pageMargin = 60; // Increased margin for better padding
-    const contentWidth = width - 2 * pageMargin; // Equal left and right padding
-    const lineHeight = 20; // Increased line height for better readability
-    const sectionSpacing = 30; // Better section spacing
+    // Layout constants
+    const pageMargin = 60;
+    const contentWidth = width - 2 * pageMargin;
+    const lineHeight = 20;
+    const sectionSpacing = 30;
     const headerHeight = 85;
     const footerHeight = 90;
     const contentAreaHeight = height - headerHeight - footerHeight;
@@ -203,8 +220,17 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       console.log("Could not load logo image:", error);
     }
 
-    // Improved Header function
+    // Header function
     const addHeader = (page: any, pageNumber: number) => {
+      // Company header background
+      page.drawRectangle({
+        x: 0,
+        y: height - headerHeight,
+        width: width,
+        height: headerHeight,
+        color: rgb(0.95, 0.95, 0.98),
+      });
+
       if (logoImage) {
         const logoWidth = 80;
         const logoHeight = 40;
@@ -219,7 +245,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       page.drawText("TOWER PROPERTY CONSULTANCY LTD", {
         x: pageMargin,
         y: height - 25,
-        size: 16, // Consistent header font size
+        size: 16,
         font: boldFont,
         color: rgb(0.1, 0.2, 0.6),
       });
@@ -240,13 +266,15 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
         color: rgb(0.1, 0.2, 0.6),
       });
 
-      page.drawText(`Report ID: ${id}`, {
-        x: width - 200,
-        y: height - 65,
-        size: 9, // Consistent header font size
-        font: font,
-        color: rgb(0.5, 0.5, 0.5),
-      });
+      if (pageNumber > 1) {
+        page.drawText(`Report ID: ${id}`, {
+          x: width - 200,
+          y: height - 65,
+          size: 9,
+          font: font,
+          color: rgb(0.5, 0.5, 0.5),
+        });
+      }
 
       // Header separator line
       page.drawLine({
@@ -257,7 +285,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       });
     };
 
-    // Improved Footer function
+    // Footer function
     const addFooter = (page: any, pageNumber: number) => {
       const footerY = footerHeight;
 
@@ -274,7 +302,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
         {
           x: pageMargin,
           y: footerY + 25,
-          size: 8, // Consistent footer font size
+          size: 8,
           font: font,
           color: rgb(0.1, 0.4, 0.8),
         }
@@ -319,33 +347,33 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       });
     };
 
-    // Improved page check function
+    // Page check function
     const checkAndAddNewPage = (requiredSpace = 60) => {
       if (y < footerHeight + requiredSpace) {
         addFooter(currentPage, pdfDoc.getPageCount());
         currentPage = pdfDoc.addPage();
         ({ width, height } = currentPage.getSize());
         addHeader(currentPage, pdfDoc.getPageCount());
-        y = height - headerHeight - 20; // Reset y position below header
+        y = height - headerHeight - 20;
         return true;
       }
       return false;
     };
 
-    // Improved title writing function
+    // Title writing function
     const writeTitle = (title: string, size = 16) => {
       checkAndAddNewPage(80);
       currentPage.drawText(title, {
         x: pageMargin,
         y: y,
-        size: size, // Increased content font size
+        size: size,
         font: boldFont,
         color: rgb(0, 0, 0.7),
       });
       y -= sectionSpacing;
     };
 
-    // Improved text writing function with better word wrapping
+    // Text writing function with word wrapping
     const writeText = (
       label: string,
       value: string,
@@ -358,7 +386,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 
       const text = `${label}: ${value}`;
       const maxWidth = contentWidth - indent;
-      const fontSize = 12; // Increased content font size
+      const fontSize = 12;
       const textFont = isBold ? boldFont : font;
 
       // Calculate text width and wrap if necessary
@@ -366,38 +394,28 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       let lines: string[] = [];
       let currentLine = "";
 
-    // Helper function to sanitize text
-function sanitizeText(text?: string) {
-  if (!text) return "";
-  // Replace tabs/newlines with space, remove other control chars
-  return text.replace(/[\t\n\r]/g, " ").replace(/[\u0000-\u001F\u007F]/g, "");
-}
+      for (const word of words) {
+        const testLine = currentLine + word + " ";
+        const safeTestLine = sanitizeText(testLine);
 
-for (const word of words) {
-  const testLine = currentLine + word + " ";
+        let textWidth: number;
+        try {
+          textWidth = textFont.widthOfTextAtSize(safeTestLine, fontSize);
+        } catch (err) {
+          console.error("PDF encoding failed for line:", safeTestLine, err);
+          textWidth = 0;
+        }
 
-  // SANITIZE the text before measuring width
-  const safeTestLine = sanitizeText(testLine);
-
-  let textWidth: number;
-  try {
-    textWidth = textFont.widthOfTextAtSize(safeTestLine, fontSize);
-  } catch (err) {
-    console.error("PDF encoding failed for line:", safeTestLine, err);
-    textWidth = 0; // fallback so it doesn't crash
-  }
-
-  if (textWidth > maxWidth && currentLine !== "") {
-    lines.push(sanitizeText(currentLine.trim())); // sanitize before pushing
-    currentLine = word + " ";
-  } else {
-    currentLine = testLine;
-  }
-}
-
+        if (textWidth > maxWidth && currentLine !== "") {
+          lines.push(sanitizeText(currentLine.trim()));
+          currentLine = word + " ";
+        } else {
+          currentLine = testLine;
+        }
+      }
 
       if (currentLine.trim()) {
-        lines.push(currentLine.trim());
+        lines.push(sanitizeText(currentLine.trim()));
       }
 
       // Draw each line
@@ -413,7 +431,7 @@ for (const word of words) {
       }
     };
 
-    // Function to write HTML content with proper formatting
+    // Function to write HTML content
     const writeHtmlContent = (
       label: string,
       htmlContent: string,
@@ -424,46 +442,40 @@ for (const word of words) {
       const sections = parseHtmlToText(htmlContent);
       if (sections.length === 0) return;
 
-      // Write the main label if provided
       if (label) {
         checkAndAddNewPage();
         currentPage.drawText(`${label}:`, {
           x: pageMargin + indent,
           y: y,
-          size: 12, // Increased content font size
+          size: 12,
           font: boldFont,
         });
         y -= lineHeight + 5;
       }
 
-      // Write each section
       for (let section of sections) {
         if (section.startsWith("**") && section.endsWith("**")) {
-          // This is a header
           section = section.replace(/\*\*/g, "");
           checkAndAddNewPage(40);
           currentPage.drawText(section, {
             x: pageMargin + indent + 20,
             y: y,
-            size: 13, // Increased content font size
+            size: 13,
             font: boldFont,
             color: rgb(0.2, 0.2, 0.7),
           });
           y -= lineHeight + 5;
         } else if (section.startsWith("• ")) {
-          // This is a list item
           section = section.substring(2);
           writeText("", `• ${section}`, indent + 20);
         } else if (section.match(/^\d+\./)) {
-          // This is a numbered list item
           writeText("", section, indent + 20);
         } else {
-          // Regular paragraph
           writeText("", section, indent + 20);
         }
       }
 
-      y -= 10; // Extra space after HTML content
+      y -= 10;
     };
 
     // Function to handle arrays
@@ -497,21 +509,18 @@ for (const word of words) {
       writeText(label, arrayValues.join(", "), indent);
     };
 
-    // Improved valuation table function
-    // Improved valuation table function with reduced width
+    // Valuation table function
     const drawValuationTable = () => {
       if (!report.valuationTable) return;
 
-      checkAndAddNewPage(200); // Ensure space for table
+      checkAndAddNewPage(200);
       writeTitle("12. COMPUTATION TABLE");
 
-      // Table settings - REDUCED COLUMN WIDTHS
       const tableStartX = pageMargin;
-      const colWidths = [90, 30, 30, 45, 45, 60, 40, 60]; // Reduced from [120, 40, 40, 60, 60, 80, 60, 80]
-      const rowHeight = 25; // Increased row height
-      const cellPadding = 2; // Reduced padding to fit more content
+      const colWidths = [90, 30, 30, 45, 45, 60, 40, 60];
+      const rowHeight = 25;
+      const cellPadding = 2;
 
-      // Helper function to draw table row
       const drawTableRow = (
         data: (string | number)[],
         yPos: number,
@@ -520,7 +529,6 @@ for (const word of words) {
         let currentX = tableStartX;
 
         for (let i = 0; i < data.length && i < colWidths.length; i++) {
-          // Draw cell border
           currentPage.drawRectangle({
             x: currentX,
             y: yPos - rowHeight,
@@ -531,17 +539,14 @@ for (const word of words) {
             color: isHeader ? rgb(0.9, 0.9, 0.9) : undefined,
           });
 
-          // Draw text in cell
           const cellText = String(data[i] || "");
-          const textSize = isHeader ? 10 : 9; // Reduced font size to fit narrower columns
+          const textSize = isHeader ? 10 : 9;
           const textFont = isHeader ? boldFont : font;
 
-          // Handle text wrapping in cells if needed
           const maxCellWidth = colWidths[i] - 2 * cellPadding;
           let displayText = cellText;
 
           if (textFont.widthOfTextAtSize(cellText, textSize) > maxCellWidth) {
-            // Truncate with ellipsis if too long
             while (
               textFont.widthOfTextAtSize(displayText + "...", textSize) >
                 maxCellWidth &&
@@ -566,7 +571,6 @@ for (const word of words) {
         return yPos - rowHeight;
       };
 
-      // Draw main table
       let tableY = y;
 
       const mainHeaders = [
@@ -581,7 +585,6 @@ for (const word of words) {
       ];
       tableY = drawTableRow(mainHeaders, tableY, true);
 
-      // Draw main building items
       if (report.valuationTable.main) {
         for (const row of report.valuationTable.main) {
           if (tableY < footerHeight + 60) {
@@ -591,14 +594,12 @@ for (const word of words) {
             addHeader(currentPage, pdfDoc.getPageCount());
             y = height - headerHeight - 20;
             tableY = y;
-            // Redraw headers on new page
             tableY = drawTableRow(mainHeaders, tableY, true);
           }
           tableY = drawTableRow(row, tableY);
         }
       }
 
-      // Draw land value
       if (report.valuationTable.land) {
         tableY -= 15;
         if (tableY < footerHeight + 60) {
@@ -612,7 +613,6 @@ for (const word of words) {
         tableY = drawTableRow(report.valuationTable.land, tableY);
       }
 
-      // Draw summary section
       if (report.valuationTable.summary) {
         tableY -= 30;
         if (tableY < footerHeight + 100) {
@@ -627,7 +627,7 @@ for (const word of words) {
         currentPage.drawText("VALUATION SUMMARY", {
           x: pageMargin,
           y: tableY + 10,
-          size: 13, // Slightly reduced title font size
+          size: 13,
           font: boldFont,
           color: rgb(0, 0, 0.7),
         });
@@ -650,95 +650,212 @@ for (const word of words) {
     };
 
     // COVER PAGE CREATION
-    // Remove header/footer from cover page initially
     let pageNumber = 1;
-// HEADER DISPLAY ON THE COVER PAGE
     addHeader(currentPage, pageNumber);
     y = height - headerHeight - 20;
-    const coverImages = report.property?.imgs || [];
 
-    if (coverImages.length > 0) {
-      // Main cover image
-      const mainImageUrl = coverImages[0];
-      const mainImage = await fetchAndEmbedImage(pdfDoc, mainImageUrl);
+    // Property title section on cover
+    const propertyTitle = `VALUATION REPORT OF A RESIDENTIAL PROPERTY`;
+    const propertyUPI = report.property?.propertyUPI || report.property?.upi || "N/A";
+    const location = `${report.property?.village || ""}, ${report.property?.sector || ""}, ${report.property?.district || ""}, ${report.property?.province || ""}`.replace(/^, |, $/g, "");
+    
+    currentPage.drawText(propertyTitle, {
+      x: pageMargin,
+      y: y,
+      size: 16,
+      font: boldFont,
+      color: rgb(0, 0, 0.8)
+    });
+    y -= 25;
+    
+    currentPage.drawText(`PROPERTY UPI: ${propertyUPI}`, {
+      x: pageMargin,
+      y: y,
+      size: 14,
+      font: boldFont,
+      color: rgb(0.6, 0, 0)
+    });
+    y -= 20;
+    
+    currentPage.drawText(`LOCATED: ${location}`, {
+      x: pageMargin,
+      y: y,
+      size: 12,
+      font: font,
+      color: rgb(0.2, 0.2, 0.2)
+    });
+    y -= 40;
 
-      if (mainImage) {
-        const coverImageWidth = 400;
-        const coverImageHeight = 250;
-        const imageX = (width - coverImageWidth) / 2;
+    // Handle cover images from property data
+    const allPropertyImages: string[] = [];
+    
+    // Collect images from siteWorks
+    if (report.siteWorks?.pictures) {
+      let siteWorkImages: string[] = [];
+      if (typeof report.siteWorks.pictures === 'string') {
+        try {
+          siteWorkImages = JSON.parse(report.siteWorks.pictures);
+        } catch (e) {
+          console.error("Failed to parse siteWorks pictures:", e);
+        }
+      } else if (Array.isArray(report.siteWorks.pictures)) {
+        siteWorkImages = report.siteWorks.pictures;
+      }
+      allPropertyImages.push(...siteWorkImages.filter(img => img && typeof img === 'string'));
+    }
 
-        currentPage.drawImage(mainImage, {
-          x: imageX,
-          y: y - coverImageHeight,
-          width: coverImageWidth,
-          height: coverImageHeight,
-        });
+    // Collect images from building
+    if (report.building?.pictures) {
+      let buildingImages: string[] = [];
+      if (typeof report.building.pictures === 'string') {
+        try {
+          buildingImages = JSON.parse(report.building.pictures);
+        } catch (e) {
+          console.error("Failed to parse building pictures:", e);
+        }
+      } else if (Array.isArray(report.building.pictures)) {
+        buildingImages = report.building.pictures;
+      }
+      allPropertyImages.push(...buildingImages.filter(img => img && typeof img === 'string'));
+    }
 
-        y -= coverImageHeight + 40;
+    // Also include legacy property images if available
+    if (report.property?.imgs) {
+      allPropertyImages.push(...report.property.imgs.filter(img => img && typeof img === 'string'));
+    }
+
+    if (allPropertyImages.length > 0) {
+      // Main property image
+      const mainImageUrl = allPropertyImages[0];
+      try {
+        const mainImage = await fetchAndEmbedImage(pdfDoc, mainImageUrl);
+        if (mainImage) {
+          const mainImageWidth = 400;
+          const mainImageHeight = 250;
+          const imageX = (width - mainImageWidth) / 2;
+
+          currentPage.drawImage(mainImage, {
+            x: imageX,
+            y: y - mainImageHeight,
+            width: mainImageWidth,
+            height: mainImageHeight,
+          });
+
+          y -= mainImageHeight + 30;
+        }
+      } catch (error) {
+        console.error("Error loading main cover image:", error);
       }
 
-      // Additional images in a row
-      if (coverImages.length > 1) {
-        const imagesPerRow = Math.min(3, coverImages.length - 1);
-        const imageWidth = (contentWidth - 20) / imagesPerRow;
-        const imageHeight = 120;
+      // Additional images in a row (thumbnails)
+      if (allPropertyImages.length > 1) {
+        const thumbnailCount = Math.min(3, allPropertyImages.length - 1);
+        const thumbnailWidth = (contentWidth - 20) / thumbnailCount;
+        const thumbnailHeight = 100;
         let currentX = pageMargin;
 
-        for (let i = 1; i <= imagesPerRow && i < coverImages.length; i++) {
-          const imageUrl = coverImages[i];
-          const embeddedImage = await fetchAndEmbedImage(pdfDoc, imageUrl);
-
-          if (embeddedImage) {
-            currentPage.drawImage(embeddedImage, {
-              x: currentX,
-              y: y - imageHeight,
-              width: imageWidth - 10,
-              height: imageHeight,
-            });
-            currentX += imageWidth;
+        for (let i = 1; i <= thumbnailCount && i < allPropertyImages.length; i++) {
+          try {
+            const thumbnailImage = await fetchAndEmbedImage(pdfDoc, allPropertyImages[i]);
+            if (thumbnailImage) {
+              currentPage.drawImage(thumbnailImage, {
+                x: currentX,
+                y: y - thumbnailHeight,
+                width: thumbnailWidth - 10,
+                height: thumbnailHeight,
+              });
+              currentX += thumbnailWidth;
+            }
+          } catch (error) {
+            console.error(`Error loading thumbnail ${i}:`, error);
           }
         }
-        y -= imageHeight + 30;
+        y -= thumbnailHeight + 40;
       }
     }
 
-    // Property overview on cover page
-    if (report.property) {
-      currentPage.drawText("PROPERTY OVERVIEW", {
-        x: pageMargin,
-        y: y,
-        size: 16,
+    // Property Overview Box
+    currentPage.drawRectangle({
+      x: pageMargin,
+      y: y - 200,
+      width: contentWidth,
+      height: 180,
+      borderColor: rgb(0.1, 0.2, 0.6),
+      borderWidth: 2,
+    });
+
+    currentPage.drawText("PROPERTY OVERVIEW", {
+      x: pageMargin + 20,
+      y: y - 25,
+      size: 16,
+      font: boldFont,
+      color: rgb(0, 0, 0.8),
+    });
+
+    y -= 50;
+
+    // Property details in two columns
+    const leftColumnX = pageMargin + 20;
+    const rightColumnX = pageMargin + (contentWidth / 2) + 10;
+    let leftY = y;
+    let rightY = y;
+
+    // Left column details
+    const leftColumnItems = [
+      { label: "Property Owner", value: report.instructions?.verbalInstructions || "N/A" },
+      { label: "Village", value: report.property?.village || "N/A" },
+      { label: "Cell", value: report.property?.cell || "N/A" },
+      { label: "Plot Size", value: `${report.landTenure?.plot_size_sqm || "N/A"} sqm` }
+    ];
+
+    // Right column details
+    const rightColumnItems = [
+      { label: "Prepared By", value: report.declaration?.techName || "N/A" },
+      { label: "Sector", value: report.property?.sector || "N/A" },
+      { label: "District", value: report.property?.district || "N/A" },
+      { label: "Date", value: new Date(report.instructions?.date || Date.now()).toLocaleDateString() }
+    ];
+
+    // Draw left column
+    leftColumnItems.forEach(item => {
+      currentPage.drawText(`${item.label}:`, {
+        x: leftColumnX,
+        y: leftY,
+        size: 10,
         font: boldFont,
-        color: rgb(0, 0, 0.7),
+        color: rgb(0.3, 0.3, 0.3),
       });
-      y -= 30;
 
-      const overviewItems = [
-        { label: "Property Owner", value: report.property.owner || "N/A" },
-        { label: "UPI Number", value: report.property.upi || "N/A" },
-        {
-          label: "Location",
-          value:
-            `${report.property.address || ""}, ${
-              report.property.district || ""
-            }, ${report.property.province || ""}`.replace(/^, |, $/g, "") ||
-            "N/A",
-        },
-        { label: "Village", value: report.property.village || "N/A" },
-        { label: "Cell", value: report.property.cell || "N/A" },
-        { label: "Sector", value: report.property.sector || "N/A" },
-      ];
+      currentPage.drawText(item.value, {
+        x: leftColumnX + 80,
+        y: leftY,
+        size: 10,
+        font: font,
+        color: rgb(0, 0, 0),
+      });
+      leftY -= 20;
+    });
 
-      for (const item of overviewItems) {
-        currentPage.drawText(`${item.label}: ${item.value}`, {
-          x: pageMargin + 20,
-          y: y,
-          size: 12,
-          font: font,
-        });
-        y -= 22;
-      }
-    }
+    // Draw right column
+    rightColumnItems.forEach(item => {
+      currentPage.drawText(`${item.label}:`, {
+        x: rightColumnX,
+        y: rightY,
+        size: 10,
+        font: boldFont,
+        color: rgb(0.3, 0.3, 0.3),
+      });
+
+      currentPage.drawText(item.value, {
+        x: rightColumnX + 80,
+        y: rightY,
+        size: 10,
+        font: font,
+        color: rgb(0, 0, 0),
+      });
+      rightY -= 20;
+    });
+
     // Add footer to cover page
     addFooter(currentPage, pageNumber++);
 
@@ -748,26 +865,14 @@ for (const word of words) {
     addHeader(currentPage, pageNumber);
     y = height - headerHeight - 20;
 
-    // MAIN CONTENT SECTIONS (Following your specified order)
+    // MAIN CONTENT SECTIONS
 
     // 1. INSTRUCTIONS
     writeTitle("1. VALUATION INSTRUCTIONS");
     if (report.instructions) {
-      writeText(
-        "Verbal Instructions",
-        report.instructions.verbalInstructions || "N/A",
-        20
-      );
-      writeText(
-        "Written Instructions",
-        report.instructions.writtenInstructions || "N/A",
-        20
-      );
-      writeText(
-        "Inspection Date",
-        report.instructions.inspectedDate || "N/A",
-        20
-      );
+      writeText("Verbal Instructions", report.instructions.verbalInstructions || "N/A", 20);
+      writeText("Written Instructions", report.instructions.writtenInstructions || "N/A", 20);
+      writeText("Inspection Date", report.instructions.inspectedDate || "N/A", 20);
       writeText("Inspected By", report.instructions.inspectedBy || "N/A", 20);
       writeText("Report Date", report.instructions.date || "N/A", 20);
       writeArray("Purposes", report.instructions.purposes, 20);
@@ -808,11 +913,7 @@ for (const word of words) {
         y -= 15;
         writeText("Assistant Valuer", report.declaration.assistantName, 20);
         writeText("Date", report.declaration.assistantDate || "N/A", 20);
-        writeText(
-          "Statement",
-          report.declaration.assistantStatement || "N/A",
-          20
-        );
+        writeText("Statement", report.declaration.assistantStatement || "N/A", 20);
       }
 
       if (report.declaration.finalStatement) {
@@ -825,20 +926,16 @@ for (const word of words) {
     checkAndAddNewPage(100);
     writeTitle("7. PROPERTY LOCATION");
     if (report.property) {
-      writeText("Property Owner", report.property.owner || "N/A", 20);
-      writeText("UPI Number", report.property.upi || "N/A", 20);
-      writeText("Address", report.property.address || "N/A", 20);
+      writeText("Property Owner", report.instructions?.verbalInstructions || "N/A", 20);
+      writeText("UPI Number", report.property.propertyUPI || report.property.upi || "N/A", 20);
+      writeText("Address", report.property.address || report.property.location || "N/A", 20);
       writeText("Village", report.property.village || "N/A", 20);
       writeText("Cell", report.property.cell || "N/A", 20);
       writeText("Sector", report.property.sector || "N/A", 20);
       writeText("District", report.property.district || "N/A", 20);
       writeText("Province", report.property.province || "N/A", 20);
-      writeText("Country", report.property.country || "N/A", 20);
-      writeText(
-        "Geographical Coordinates",
-        report.property.geographical_coordinate || "N/A",
-        20
-      );
+      writeText("Country", report.property.country || "Rwanda", 20);
+      writeText("Geographical Coordinates", report.property.geographical_coordinate || report.property.coordinates || "N/A", 20);
     }
 
     // 8. TENURE AND TENANCIES
@@ -847,51 +944,17 @@ for (const word of words) {
     if (report.landTenure) {
       writeText("Tenure Type", report.landTenure.tenure || "N/A", 20);
       writeText("Occupancy", report.landTenure.occupancy || "N/A", 20);
-      writeText(
-        "Plot Size",
-        report.landTenure.plot_size_sqm
-          ? `${report.landTenure.plot_size_sqm} sqm`
-          : "N/A",
-        20
-      );
+      writeText("Plot Size", report.landTenure.plot_size_sqm ? `${report.landTenure.plot_size_sqm} sqm` : "N/A", 20);
       writeText("Plot Shape", report.landTenure.plot_shape || "N/A", 20);
       writeText("NLA Zoning", report.landTenure.nla_zoning || "N/A", 20);
-      writeText(
-        "Land Title Use",
-        report.landTenure.land_title_use || "N/A",
-        20
-      );
-      writeText(
-        "Current Land Use",
-        report.landTenure.land_current_use || "N/A",
-        20
-      );
-      writeText(
-        "Tenure Years",
-        report.landTenure.tenure_years?.toString() || "N/A",
-        20
-      );
-      writeText(
-        "Tenure Start Date",
-        report.landTenure.tenure_start_date || "N/A",
-        20
-      );
+      writeText("Land Title Use", report.landTenure.land_title_use || "N/A", 20);
+      writeText("Current Land Use", report.landTenure.land_current_use || "N/A", 20);
+      writeText("Tenure Years", report.landTenure.tenure_years?.toString() || "N/A", 20);
+      writeText("Tenure Start Date", report.landTenure.tenure_start_date || "N/A", 20);
       writeText("Encumbrances", report.landTenure.encumbrances || "N/A", 20);
-      writeText(
-        "Permitted Uses",
-        report.landTenure.permitted_uses || "N/A",
-        20
-      );
-      writeText(
-        "Prohibited Uses",
-        report.landTenure.prohibited_uses || "N/A",
-        20
-      );
-      writeText(
-        "Lot Size Notes",
-        report.landTenure.lot_size_notes || "N/A",
-        20
-      );
+      writeText("Permitted Uses", report.landTenure.permitted_uses || "N/A", 20);
+      writeText("Prohibited Uses", report.landTenure.prohibited_uses || "N/A", 20);
+      writeText("Lot Size Notes", report.landTenure.lot_size_notes || "N/A", 20);
     }
 
     // 9. SERVICES AND SITE WORKS
@@ -899,11 +962,7 @@ for (const word of words) {
     writeTitle("9. SERVICES AND SITE WORKS");
     if (report.siteWorks) {
       writeText("Site Name", report.siteWorks.site_name || "N/A", 20);
-      writeText(
-        "Boundary Wall",
-        report.siteWorks.has_boundary_wall ? "Yes" : "No",
-        20
-      );
+      writeText("Boundary Wall", report.siteWorks.has_boundary_wall ? "Yes" : "No", 20);
       writeArray("Wall Materials", report.siteWorks.walls, 20);
       writeArray("Wall Finishing", report.siteWorks.finishing, 20);
       writeArray("Foundation Types", report.siteWorks.foundation_types, 20);
@@ -913,99 +972,80 @@ for (const word of words) {
       writeArray("Access Types", report.siteWorks.access_types, 20);
       writeArray("Utility Supplies", report.siteWorks.supply_types, 20);
       writeText("CCTV System", report.siteWorks.cctv_installed || "N/A", 20);
-      writeText(
-        "Solar System",
-        report.siteWorks.solar_system_installed || "N/A",
-        20
-      );
-      writeText(
-        "Playground Area",
-        report.siteWorks.playground_sqm
-          ? `${report.siteWorks.playground_sqm} sqm`
-          : "N/A",
-        20
-      );
-      writeText(
-        "Swimming Pool Area",
-        report.siteWorks.swimming_pool_sqm
-          ? `${report.siteWorks.swimming_pool_sqm} sqm`
-          : "N/A",
-        20
-      );
+      writeText("Solar System", report.siteWorks.solar_system_installed || "N/A", 20);
+      writeText("Playground Area", report.siteWorks.playground_sqm ? `${report.siteWorks.playground_sqm} sqm` : "N/A", 20);
+      writeText("Swimming Pool Area", report.siteWorks.swimming_pool_sqm ? `${report.siteWorks.swimming_pool_sqm} sqm` : "N/A", 20);
     }
 
     // Add site work images
-    // Add site work images
-const siteWorkPictures = report.siteWorks?.pictures;
-
-if (siteWorkPictures) {
-  let imageUrls = [];
-  
-  // Handle the JSON string format from your data
-  if (typeof siteWorkPictures === 'string') {
-    try {
-      imageUrls = JSON.parse(siteWorkPictures);
-    } catch (e) {
-      console.error("Failed to parse site work pictures JSON:", e);
-      imageUrls = [];
-    }
-  } else if (Array.isArray(siteWorkPictures)) {
-    imageUrls = siteWorkPictures;
-  }
-
-  if (imageUrls.length > 0) {
-    y -= 20;
-    currentPage.drawText("Site Work Photographs:", {
-      x: pageMargin + 20,
-      y: y,
-      size: 14,
-      font: boldFont,
-      color: rgb(0, 0, 0.6),
-    });
-    y -= 25;
-
-    for (let i = 0; i < imageUrls.length; i++) {
-      const imageUrl = imageUrls[i];
+    const siteWorkPictures = report.siteWorks?.pictures;
+    if (siteWorkPictures) {
+      let imageUrls: string[] = [];
       
-      if (!imageUrl || typeof imageUrl !== 'string') {
-        console.log(`Skipping invalid image URL at index ${i}:`, imageUrl);
-        continue;
+      if (typeof siteWorkPictures === 'string') {
+        try {
+          imageUrls = JSON.parse(siteWorkPictures);
+        } catch (e) {
+          console.error("Failed to parse site work pictures JSON:", e);
+          imageUrls = [];
+        }
+      } else if (Array.isArray(siteWorkPictures)) {
+        imageUrls = siteWorkPictures;
       }
 
-      try {
-        const embeddedImage = await fetchAndEmbedImage(pdfDoc, imageUrl);
+      if (imageUrls.length > 0) {
+        y -= 20;
+        currentPage.drawText("Site Work Photographs:", {
+          x: pageMargin + 20,
+          y: y,
+          size: 14,
+          font: boldFont,
+          color: rgb(0, 0, 0.6),
+        });
+        y -= 25;
 
-        if (embeddedImage) {
-          checkAndAddNewPage(200);
+        for (let i = 0; i < imageUrls.length; i++) {
+          const imageUrl = imageUrls[i];
+          
+          if (!imageUrl || typeof imageUrl !== 'string') {
+            console.log(`Skipping invalid image URL at index ${i}:`, imageUrl);
+            continue;
+          }
 
-          const imageWidth = 200;
-          const imageHeight = 150;
+          try {
+            const embeddedImage = await fetchAndEmbedImage(pdfDoc, imageUrl);
 
-          currentPage.drawText(`Site Work Photo ${i + 1}:`, {
-            x: pageMargin + 20,
-            y: y,
-            size: 12,
-            font: font,
-          });
-          y -= 20;
+            if (embeddedImage) {
+              checkAndAddNewPage(200);
 
-          currentPage.drawImage(embeddedImage, {
-            x: pageMargin + 20,
-            y: y - imageHeight,
-            width: imageWidth,
-            height: imageHeight,
-          });
+              const imageWidth = 200;
+              const imageHeight = 150;
 
-          y -= imageHeight + 25;
-        } else {
-          console.error(`Failed to embed site work image ${i + 1}:`, imageUrl);
+              currentPage.drawText(`Site Work Photo ${i + 1}:`, {
+                x: pageMargin + 20,
+                y: y,
+                size: 12,
+                font: font,
+              });
+              y -= 20;
+
+              currentPage.drawImage(embeddedImage, {
+                x: pageMargin + 20,
+                y: y - imageHeight,
+                width: imageWidth,
+                height: imageHeight,
+              });
+
+              y -= imageHeight + 25;
+            } else {
+              console.error(`Failed to embed site work image ${i + 1}:`, imageUrl);
+            }
+          } catch (error) {
+            console.error(`Error processing site work image ${i + 1}:`, error);
+          }
         }
-      } catch (error) {
-        console.error(`Error processing site work image ${i + 1}:`, error);
       }
     }
-  }
-}
 
     // 10. BUILDING DETAILS
     checkAndAddNewPage(100);
@@ -1023,54 +1063,76 @@ if (siteWorkPictures) {
       writeArray("Door Types", report.building.doors, 20);
       writeArray("Window Types", report.building.windows, 20);
       writeArray("Fittings & Fixtures", report.building.fittings, 20);
-      writeArray(
-        "Accommodation Units",
-        report.building.accommodation_units,
-        20
-      );
+      writeArray("Accommodation Units", report.building.accommodation_units, 20);
       writeArray("Other Units", report.building.other_accommodation_unit, 20);
     }
 
     // Add building images
-    const buildingImages = report.building?.pictures || [];
+    const buildingPictures = report.building?.pictures;
+    if (buildingPictures) {
+      let buildingImageUrls: string[] = [];
+      
+      if (typeof buildingPictures === 'string') {
+        try {
+          buildingImageUrls = JSON.parse(buildingPictures);
+        } catch (e) {
+          console.error("Failed to parse building pictures JSON:", e);
+          buildingImageUrls = [];
+        }
+      } else if (Array.isArray(buildingPictures)) {
+        buildingImageUrls = buildingPictures;
+      }
 
-    if (buildingImages.length > 0) {
-      y -= 20;
-      currentPage.drawText("Building Photographs:", {
-        x: pageMargin + 20,
-        y: y,
-        size: 14, // Increased content font size
-        font: boldFont,
-        color: rgb(0, 0, 0.6),
-      });
-      y -= 25;
+      if (buildingImageUrls.length > 0) {
+        y -= 20;
+        currentPage.drawText("Building Photographs:", {
+          x: pageMargin + 20,
+          y: y,
+          size: 14,
+          font: boldFont,
+          color: rgb(0, 0, 0.6),
+        });
+        y -= 25;
 
-      for (let i = 0; i < buildingImages.length; i++) {
-        const imageUrl = buildingImages[i];
-        const embeddedImage = await fetchAndEmbedImage(pdfDoc, imageUrl);
+        for (let i = 0; i < buildingImageUrls.length; i++) {
+          const imageUrl = buildingImageUrls[i];
+          
+          if (!imageUrl || typeof imageUrl !== 'string') {
+            console.log(`Skipping invalid building image URL at index ${i}:`, imageUrl);
+            continue;
+          }
 
-        if (embeddedImage) {
-          checkAndAddNewPage(200);
+          try {
+            const embeddedImage = await fetchAndEmbedImage(pdfDoc, imageUrl);
 
-          const imageWidth = 200; // Increased image size
-          const imageHeight = 150;
+            if (embeddedImage) {
+              checkAndAddNewPage(200);
 
-          currentPage.drawText(`Building Photo ${i + 1}:`, {
-            x: pageMargin + 20,
-            y: y,
-            size: 12, // Increased content font size
-            font: font,
-          });
-          y -= 20;
+              const imageWidth = 200;
+              const imageHeight = 150;
 
-          currentPage.drawImage(embeddedImage, {
-            x: pageMargin + 20,
-            y: y - imageHeight,
-            width: imageWidth,
-            height: imageHeight,
-          });
+              currentPage.drawText(`Building Photo ${i + 1}:`, {
+                x: pageMargin + 20,
+                y: y,
+                size: 12,
+                font: font,
+              });
+              y -= 20;
 
-          y -= imageHeight + 25;
+              currentPage.drawImage(embeddedImage, {
+                x: pageMargin + 20,
+                y: y - imageHeight,
+                width: imageWidth,
+                height: imageHeight,
+              });
+
+              y -= imageHeight + 25;
+            } else {
+              console.error(`Failed to embed building image ${i + 1}:`, imageUrl);
+            }
+          } catch (error) {
+            console.error(`Error processing building image ${i + 1}:`, error);
+          }
         }
       }
     }
