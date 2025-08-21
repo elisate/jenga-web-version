@@ -2,33 +2,27 @@
 import React, { useEffect, useState } from "react";
 import { getEvaluationWithDetails } from "@/Reporting/evaluationDetail";
 import Link from "next/link";
-import { 
-  Building2, 
-  MapPin, 
-  User, 
-  Mail, 
-  Phone, 
-  Shield, 
-  Calendar, 
+import {
+  Building2,
+  MapPin,
+  User,
+  Shield,
+  Calendar,
   FileText,
-  Home,
-  Wrench,
   Eye,
-  Users,
   Search,
-  ChevronDown,
   Edit,
   Download,
   Trash2,
-  Clock
+  Clock,
 } from "lucide-react";
 
 interface EvaluationItem {
   evaluation_data_id: number;
   property_id: number;
   created_at: string | null;
-  property?: { 
-    address?: string; 
+  property?: {
+    address?: string;
     upi?: string;
     [key: string]: any;
   } | null;
@@ -60,29 +54,29 @@ export default function EvaluationList() {
   }, []);
 
   // Filter evaluations based on search term with improved UPI search
-  const filteredEvaluations = evaluations.filter(evalItem => {
+  const filteredEvaluations = evaluations.filter((evalItem) => {
     const searchLower = searchTerm.toLowerCase().trim();
-    
+
     if (!searchLower) return true;
-    
+
     // Search in property address
-    const address = evalItem.property?.address?.toLowerCase() || '';
+    const address = evalItem.property?.address?.toLowerCase() || "";
     if (address.includes(searchLower)) return true;
-    
+
     // Enhanced UPI search - exact match and partial match
-    const upi = evalItem.property?.upi?.toLowerCase() || '';
+    const upi = evalItem.property?.upi?.toLowerCase() || "";
     if (upi.includes(searchLower)) return true;
-    
+
     // Search in user name
-    const firstName = evalItem.user?.first_name?.toLowerCase() || '';
-    const lastName = evalItem.user?.last_name?.toLowerCase() || '';
+    const firstName = evalItem.user?.first_name?.toLowerCase() || "";
+    const lastName = evalItem.user?.last_name?.toLowerCase() || "";
     const fullName = `${firstName} ${lastName}`.trim();
     if (fullName.includes(searchLower)) return true;
-    
+
     // Search in evaluation ID
     const evalId = evalItem.evaluation_data_id.toString();
     if (evalId.includes(searchTerm)) return true;
-    
+
     return false;
   });
 
@@ -95,15 +89,18 @@ export default function EvaluationList() {
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
-        
         {/* Header Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Total Valuations */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 text-sm font-medium">Total Valuations</p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">{totalValuations}</p>
+                <p className="text-gray-600 text-sm font-medium">
+                  Total Valuations
+                </p>
+                <p className="text-3xl font-bold text-gray-900 mt-1">
+                  {totalValuations}
+                </p>
               </div>
               <div className="bg-blue-50 p-3 rounded-lg">
                 <FileText className="w-6 h-6 text-blue-600" />
@@ -116,7 +113,9 @@ export default function EvaluationList() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 text-sm font-medium">Draft</p>
-                <p className="text-3xl font-bold text-orange-600 mt-1">{draftCount}</p>
+                <p className="text-3xl font-bold text-orange-600 mt-1">
+                  {draftCount}
+                </p>
               </div>
               <div className="bg-orange-50 p-3 rounded-lg">
                 <Clock className="w-6 h-6 text-orange-600" />
@@ -128,8 +127,12 @@ export default function EvaluationList() {
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 text-sm font-medium">Under Review</p>
-                <p className="text-3xl font-bold text-blue-600 mt-1">{underReviewCount}</p>
+                <p className="text-gray-600 text-sm font-medium">
+                  Under Review
+                </p>
+                <p className="text-3xl font-bold text-blue-600 mt-1">
+                  {underReviewCount}
+                </p>
               </div>
               <div className="bg-blue-50 p-3 rounded-lg">
                 <Eye className="w-6 h-6 text-blue-600" />
@@ -142,7 +145,9 @@ export default function EvaluationList() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 text-sm font-medium">Finalized</p>
-                <p className="text-3xl font-bold text-green-600 mt-1">{finalizedCount}</p>
+                <p className="text-3xl font-bold text-green-600 mt-1">
+                  {finalizedCount}
+                </p>
               </div>
               <div className="bg-green-50 p-3 rounded-lg">
                 <Shield className="w-6 h-6 text-green-600" />
@@ -174,14 +179,14 @@ export default function EvaluationList() {
                 <option>Under Review</option>
                 <option>Finalized</option>
               </select>
-              
+
               <select className="px-4 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                 <option>All Purposes</option>
                 <option>Mortgage</option>
                 <option>Sale</option>
                 <option>Insurance</option>
               </select>
-              
+
               <select className="px-4 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                 <option>All Methods</option>
                 <option>Comparative</option>
@@ -198,9 +203,13 @@ export default function EvaluationList() {
             <div className="bg-gray-100 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-4">
               <FileText className="w-12 h-12 text-gray-400" />
             </div>
-            <h3 className="text-xl font-semibold text-gray-700 mb-2">No Evaluations Found</h3>
+            <h3 className="text-xl font-semibold text-gray-700 mb-2">
+              No Evaluations Found
+            </h3>
             <p className="text-gray-500">
-              {searchTerm ? "No evaluations match your search criteria." : "No evaluation data is currently available."}
+              {searchTerm
+                ? "No evaluations match your search criteria."
+                : "No evaluation data is currently available."}
             </p>
           </div>
         )}
@@ -208,7 +217,7 @@ export default function EvaluationList() {
         {/* Evaluation Cards */}
         <div className="space-y-4">
           {filteredEvaluations.map((evalItem) => (
-            <div 
+            <div
               key={evalItem.evaluation_data_id}
               className="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow duration-200"
             >
@@ -221,7 +230,8 @@ export default function EvaluationList() {
                     </div>
                     <div>
                       <h3 className="text-lg font-semibold text-gray-900">
-                        {evalItem.property?.address || `Property ${evalItem.property_id}`}
+                        {evalItem.property?.address ||
+                          `Property ${evalItem.property_id}`}
                       </h3>
                       <div className="flex items-center gap-4 mt-1">
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
@@ -233,13 +243,15 @@ export default function EvaluationList() {
                       </div>
                     </div>
                   </div>
-                  
+
                   {/* Action Buttons */}
                   <div className="flex items-center gap-2">
                     <button className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
                       <Edit className="w-5 h-5" />
                     </button>
-                    <Link href={`/dashboard/newvaluation/${evalItem.evaluation_data_id}`}>
+                    <Link
+                      href={`/dashboard/newvaluation/${evalItem.evaluation_data_id}`}
+                    >
                       <button className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
                         <Eye className="w-5 h-5" />
                       </button>
@@ -260,26 +272,29 @@ export default function EvaluationList() {
                     <div className="flex items-center gap-2 mb-2">
                       <User className="w-4 h-4 text-gray-400" />
                       <span className="font-medium text-gray-700">
-                        {evalItem.user?.first_name && evalItem.user?.last_name 
+                        {evalItem.user?.first_name && evalItem.user?.last_name
                           ? `${evalItem.user.first_name} ${evalItem.user.last_name}`
-                          : 'Unknown Client'
-                        }
+                          : "Unknown Client"}
                       </span>
                     </div>
-                    <p className="text-gray-500 ml-6">{evalItem.user?.phone || 'N/A'}</p>
+                    <p className="text-gray-500 ml-6">
+                      {evalItem.user?.phone || "N/A"}
+                    </p>
                   </div>
 
                   {/* Location */}
                   <div>
                     <div className="flex items-center gap-2 mb-2">
                       <MapPin className="w-4 h-4 text-gray-400" />
-                      <span className="font-medium text-gray-700">Location</span>
+                      <span className="font-medium text-gray-700">
+                        Location
+                      </span>
                     </div>
                     <p className="text-gray-500 ml-6">
-                      {evalItem.property?.address || 'Address not provided'}
+                      {evalItem.property?.address || "Address not provided"}
                     </p>
                     <p className="text-xs text-gray-400 ml-6 mt-1">
-                      UPI: {evalItem.property?.upi || 'N/A'}
+                      UPI: {evalItem.property?.upi || "N/A"}
                     </p>
                   </div>
 
@@ -288,7 +303,9 @@ export default function EvaluationList() {
                     <div className="flex items-center gap-2 mb-2">
                       <Calendar className="w-4 h-4 text-gray-400" />
                       <span className="font-medium text-gray-700">
-                        {evalItem.created_at ? new Date(evalItem.created_at).toLocaleDateString() : 'N/A'}
+                        {evalItem.created_at
+                          ? new Date(evalItem.created_at).toLocaleDateString()
+                          : "N/A"}
                       </span>
                     </div>
                     <p className="text-gray-500 ml-6">Valuation Date</p>
@@ -296,20 +313,39 @@ export default function EvaluationList() {
 
                   {/* Additional Info */}
                   <div className="space-y-2 text-xs text-gray-500">
-                    <div><span className="font-medium">Created:</span> {evalItem.created_at ? new Date(evalItem.created_at).toLocaleDateString() : 'N/A'}</div>
-                    <div><span className="font-medium">Inspection:</span> {evalItem.created_at ? new Date(evalItem.created_at).toLocaleDateString() : 'N/A'}</div>
-                    <div><span className="font-medium">Instruction:</span> N/A</div>
-                    <div><span className="font-medium">Condition:</span> {evalItem.building?.foundation ? 'Good' : 'N/A'}</div>
+                    <div>
+                      <span className="font-medium">Created:</span>{" "}
+                      {evalItem.created_at
+                        ? new Date(evalItem.created_at).toLocaleDateString()
+                        : "N/A"}
+                    </div>
+                    <div>
+                      <span className="font-medium">Inspection:</span>{" "}
+                      {evalItem.created_at
+                        ? new Date(evalItem.created_at).toLocaleDateString()
+                        : "N/A"}
+                    </div>
+                    <div>
+                      <span className="font-medium">Instruction:</span> N/A
+                    </div>
+                    <div>
+                      <span className="font-medium">Condition:</span>{" "}
+                      {evalItem.building?.foundation ? "Good" : "N/A"}
+                    </div>
                   </div>
                 </div>
 
                 {/* Property Description */}
-                {(evalItem.building?.foundation || evalItem.landTenure?.tenure || evalItem.siteWorks?.access_types) && (
+                {(evalItem.building?.foundation ||
+                  evalItem.landTenure?.tenure ||
+                  evalItem.siteWorks?.access_types) && (
                   <div className="mt-4 pt-4 border-t border-gray-100">
                     <p className="text-sm text-gray-600">
                       {/* {evalItem.building?.foundation && `Foundation: ${evalItem.building.foundation}. `} */}
-                      {evalItem.landTenure?.tenure && `Tenure: ${evalItem.landTenure.tenure}. `}
-                      {evalItem.siteWorks?.access_types && `Access: ${evalItem.siteWorks.access_types}.`}
+                      {evalItem.landTenure?.tenure &&
+                        `Tenure: ${evalItem.landTenure.tenure}. `}
+                      {evalItem.siteWorks?.access_types &&
+                        `Access: ${evalItem.siteWorks.access_types}.`}
                     </p>
                   </div>
                 )}
