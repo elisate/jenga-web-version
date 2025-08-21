@@ -131,14 +131,14 @@ export default function ValuationReport() {
   return (
     <div className="container mx-auto p-6 space-y-6">
       <button
-        onClick={handleSaveReport}
-        disabled={saving}
-        className={`px-4 py-2 text-white rounded ${
-          saving ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"
-        }`}
-      >
-        {saving ? "Saving..." : "Save Report"}
-      </button>
+  onClick={handleSaveReport}
+  disabled={saving}
+  className={`px-4 py-2 text-white rounded ${
+    saving ? "bg-gray-400 cursor-not-allowed" : "bg-violet-600 hover:bg-violet-700"
+  }`}
+>
+  {saving ? "Saving..." : "Save Report"}
+</button>
 
       <Instructions
         value={reportData.instructions}

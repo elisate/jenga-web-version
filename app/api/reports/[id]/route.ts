@@ -701,107 +701,113 @@ export async function GET(
     y -= 40;
 
     // Collect building images only (limit to 3)
-    const buildingImages: string[] = [];
+ 
+//-----------------------------------------------
+   // Collect building images only (limit to 3) 
+// Collect building images only (limit to 3) 
+// Collect building images only (limit to 3) 
+const buildingImages: string[] = [];
+if (report.building?.pictures) { 
+  let buildingImageUrls: string[] = []; 
+  if (typeof report.building.pictures === "string") { 
+    try { 
+      buildingImageUrls = JSON.parse(report.building.pictures); 
+    } catch (e) { 
+      console.error("Failed to parse building pictures:", e); 
+    } 
+  } else if (Array.isArray(report.building.pictures)) { 
+    buildingImageUrls = report.building.pictures; 
+  } 
+  buildingImages.push( 
+    ...buildingImageUrls 
+      .filter((img) => img && typeof img === "string") 
+      .slice(0, 3) 
+  ); 
+} 
 
-    // Only collect building images
-    if (report.building?.pictures) {
-      let buildingImageUrls: string[] = [];
-      if (typeof report.building.pictures === "string") {
-        try {
-          buildingImageUrls = JSON.parse(report.building.pictures);
-        } catch (e) {
-          console.error("Failed to parse building pictures:", e);
-        }
-      } else if (Array.isArray(report.building.pictures)) {
-        buildingImageUrls = report.building.pictures;
-      }
-      buildingImages.push(
-        ...buildingImageUrls
-          .filter((img) => img && typeof img === "string")
-          .slice(0, 3)
-      );
-    }
+// Display images (1 large + 2 small in grid) 
+if (buildingImages.length > 0) { 
+  // Main property image - SAME WIDTH AS PROPERTY OVERVIEW BOX
+  const mainImageUrl = buildingImages[0]; 
+  try { 
+    const mainImage = await fetchAndEmbedImage(pdfDoc, mainImageUrl); 
+    if (mainImage) { 
+      const pageMargin = 20; // Keep existing page margin
+      const contentWidth = width - (pageMargin * 2); // Available content area
+      const imageReduction = 60; // Reduce image width by this amount from each side
+      const mainImageWidth = contentWidth - (imageReduction * 2); // Smaller than content area
+      const mainImageHeight = 140; // Proportional height for smaller width
+      const imageX = pageMargin + imageReduction; // Center within content area
 
-    // Display images (1 large + 2 small in grid)
-    if (buildingImages.length > 0) {
-      // Main property image
-      const mainImageUrl = buildingImages[0];
-      try {
-        const mainImage = await fetchAndEmbedImage(pdfDoc, mainImageUrl);
-        if (mainImage) {
-          const mainImageWidth = 220;
-          const mainImageHeight = 150;
-          const imageX = (width - mainImageWidth) / 2;
+      // Add border around main image with color fill 
+      currentPage.drawRectangle({ 
+        x: imageX - 5, 
+        y: y - mainImageHeight - 5, 
+        width: mainImageWidth + 10, 
+        height: mainImageHeight + 10, 
+        color: rgb(0.95, 0.97, 1), 
+        borderColor: rgb(0.1, 0.2, 0.6), 
+        borderWidth: 2, 
+      }); 
 
-          // Add border around main image with color fill
-          currentPage.drawRectangle({
-            x: imageX - 5,
-            y: y - mainImageHeight - 5,
-            width: mainImageWidth + 10,
-            height: mainImageHeight + 10,
-            color: rgb(0.95, 0.97, 1),
-            borderColor: rgb(0.1, 0.2, 0.6),
-            borderWidth: 2,
-          });
+      currentPage.drawImage(mainImage, { 
+        x: imageX, 
+        y: y - mainImageHeight, 
+        width: mainImageWidth, 
+        height: mainImageHeight, 
+      }); 
 
-          currentPage.drawImage(mainImage, {
-            x: imageX,
-            y: y - mainImageHeight,
-            width: mainImageWidth,
-            height: mainImageHeight,
-          });
+      y -= mainImageHeight + 15; 
+    } 
+  } catch (error) { 
+    console.error("Error loading main cover image:", error); 
+  } 
 
-          y -= mainImageHeight + 15;
-        }
-      } catch (error) {
-        console.error("Error loading main cover image:", error);
-      }
+  // Grid of 2 additional images in a row - SAME WIDTH AS CONTENT AREA
+  if (buildingImages.length > 1) { 
+    const gridImages = buildingImages.slice(1, 3); 
+    const pageMargin = 20; // Keep existing page margin
+    const contentWidth = width - (pageMargin * 2); // Available content area
+    const imageReduction = 60; // Same reduction as main image
+    const spacing = 15; 
+    const availableGridWidth = contentWidth - (imageReduction * 2); // Reduced grid area
+    const thumbnailWidth = (availableGridWidth - spacing) / 2; // Split reduced area
+    const thumbnailHeight = 90; // Proportional to smaller width
+    let currentX = pageMargin + imageReduction; // Start from reduced position
 
-      // Grid of 2 additional images in a row
-      if (buildingImages.length > 1) {
-        const gridImages = buildingImages.slice(1, 3);
-        const thumbnailWidth = 100;
-        const thumbnailHeight = 100;
-        const spacing = 15;
-        const totalGridWidth =
-          thumbnailWidth * gridImages.length +
-          spacing * (gridImages.length - 1);
-        let currentX = (width - totalGridWidth) / 2;
+    for (let i = 0; i < gridImages.length; i++) { 
+      try { 
+        const thumbnailImage = await fetchAndEmbedImage( 
+          pdfDoc, 
+          gridImages[i] 
+        ); 
+        if (thumbnailImage) { 
+          // Add border around thumbnail with color fill 
+          currentPage.drawRectangle({ 
+            x: currentX - 3, 
+            y: y - thumbnailHeight - 3, 
+            width: thumbnailWidth + 6, 
+            height: thumbnailHeight + 6, 
+            color: rgb(0.95, 0.97, 1), 
+            borderColor: rgb(0.1, 0.2, 0.6), 
+            borderWidth: 1, 
+          }); 
 
-        for (let i = 0; i < gridImages.length; i++) {
-          try {
-            const thumbnailImage = await fetchAndEmbedImage(
-              pdfDoc,
-              gridImages[i]
-            );
-            if (thumbnailImage) {
-              // Add border around thumbnail with color fill
-              currentPage.drawRectangle({
-                x: currentX - 3,
-                y: y - thumbnailHeight - 3,
-                width: thumbnailWidth + 6,
-                height: thumbnailHeight + 6,
-                color: rgb(0.95, 0.97, 1),
-                borderColor: rgb(0.1, 0.2, 0.6),
-                borderWidth: 1,
-              });
-
-              currentPage.drawImage(thumbnailImage, {
-                x: currentX,
-                y: y - thumbnailHeight,
-                width: thumbnailWidth,
-                height: thumbnailHeight,
-              });
-              currentX += thumbnailWidth + spacing;
-            }
-          } catch (error) {
-            console.error(`Error loading grid image ${i + 1}:`, error);
-          }
-        }
-        y -= thumbnailHeight + 20;
-      }
-    }
-
+          currentPage.drawImage(thumbnailImage, { 
+            x: currentX, 
+            y: y - thumbnailHeight, 
+            width: thumbnailWidth, 
+            height: thumbnailHeight, 
+          }); 
+          currentX += thumbnailWidth + spacing; 
+        } 
+      } catch (error) { 
+        console.error(`Error loading grid image ${i + 1}:`, error); 
+      } 
+    } 
+    y -= thumbnailHeight + 20; 
+  } 
+}
     // Property Overview Box with full height left side padding
     const boxHeight = 160;
     const availableSpace = y - footerHeight - 30;

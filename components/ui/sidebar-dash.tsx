@@ -10,7 +10,7 @@ import type { Database } from "@/types/supabase";
 
 const navItems = [
   { label: "Dashboard", href: "/dashboard", icon: <Home className="w-5 h-5" /> },
-  { label: "Valuations", href: "/dashboard/valuations", icon: <FileText className="w-5 h-5" /> },
+  { label: "Valuations", href: "/dashboard/newvaluation", icon: <FileText className="w-5 h-5" /> },
   { label: "Properties", href: "/dashboard/properties", icon: <Building className="w-5 h-5" /> },
   { label: "Templates", href: "/dashboard/templates", icon: <Clipboard className="w-5 h-5" /> },
   { label: "Users", href: "/dashboard/users", icon: <Users className="w-5 h-5" /> },
