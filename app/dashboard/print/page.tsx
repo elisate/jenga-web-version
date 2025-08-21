@@ -1,15 +1,14 @@
 "use client";
 import { useState, useEffect } from "react";
 import { supabaseClient } from "@/lib/supabase/client";
-import { 
-  FileText, 
-  Download, 
-  Building2, 
-  User, 
+import {
+  FileText,
+  Download,
+  Building2,
+  User,
   Calendar,
-  MapPin,
   Loader2,
-  FolderOpen
+  FolderOpen,
 } from "lucide-react";
 
 interface Report {
@@ -38,37 +37,39 @@ function ReportItem({
           <div className="bg-blue-50 p-3 rounded-lg">
             <FileText className="w-6 h-6 text-blue-600" />
           </div>
-          
+
           {/* Report Details */}
           <div className="flex-1">
             <h3 className="font-semibold text-lg text-gray-900 mb-2">
               {report.title}
             </h3>
-            
+
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <Building2 className="w-4 h-4 text-gray-400" />
                 <span className="font-medium">Property:</span>
                 <span>{report.property ?? "Unknown Property"}</span>
               </div>
-              
+
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <User className="w-4 h-4 text-gray-400" />
                 <span className="font-medium">Owner:</span>
                 <span>{report.owner ?? "Unknown Owner"}</span>
               </div>
-              
+
               {report.created_at && (
                 <div className="flex items-center gap-2 text-sm text-gray-600">
                   <Calendar className="w-4 h-4 text-gray-400" />
                   <span className="font-medium">Created:</span>
-                  <span>{new Date(report.created_at).toLocaleDateString()}</span>
+                  <span>
+                    {new Date(report.created_at).toLocaleDateString()}
+                  </span>
                 </div>
               )}
             </div>
           </div>
         </div>
-        
+
         {/* Download Button */}
         <button
           onClick={() => onDownload(report.id)}
@@ -104,9 +105,7 @@ export default function ReportsList() {
   const fetchReports = async () => {
     setLoadingReports(true);
     try {
-      const { data, error } = await supabaseClient
-        .from("reports")
-        .select(`
+      const { data, error } = await supabaseClient.from("reports").select(`
           id,
           evaluation_id,
           created_at,
@@ -181,7 +180,7 @@ export default function ReportsList() {
               </p>
             </div>
           </div>
-          
+
           {/* Stats Card */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex items-center justify-between">
@@ -190,7 +189,9 @@ export default function ReportsList() {
                   <FolderOpen className="w-6 h-6 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Total Reports</p>
+                  <p className="text-sm font-medium text-gray-600">
+                    Total Reports
+                  </p>
                   <p className="text-2xl font-bold text-gray-900">
                     {loadingReports ? "..." : reports.length}
                   </p>
@@ -199,7 +200,9 @@ export default function ReportsList() {
               <div className="text-right">
                 <p className="text-sm text-gray-500">Available for download</p>
                 <p className="text-sm font-medium text-green-600">
-                  {loadingReports ? "Loading..." : `${reports.length} PDF files`}
+                  {loadingReports
+                    ? "Loading..."
+                    : `${reports.length} PDF files`}
                 </p>
               </div>
             </div>
@@ -229,9 +232,12 @@ export default function ReportsList() {
               <div className="bg-gray-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
                 <FileText className="w-10 h-10 text-gray-400" />
               </div>
-              <h3 className="text-xl font-semibold text-gray-700 mb-2">No Reports Available</h3>
+              <h3 className="text-xl font-semibold text-gray-700 mb-2">
+                No Reports Available
+              </h3>
               <p className="text-gray-500">
-                No evaluation reports have been generated yet. Create an evaluation to generate your first report.
+                No evaluation reports have been generated yet. Create an
+                evaluation to generate your first report.
               </p>
             </div>
           )}
