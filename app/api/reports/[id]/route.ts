@@ -9,9 +9,10 @@ import { sanitizeText } from "@/Reporting/sanitizeText";
 
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: { id: string } } // destructure params correctly
 ) {
-  const id = params?.id?.trim(); // Removed 'await' here
+  // params.id is guaranteed because the route is /[id]
+  const id = params.id.trim(); // directly use id
   if (!id) {
     return NextResponse.json({ error: "Missing report ID" }, { status: 400 });
   }
@@ -229,7 +230,7 @@ export async function GET(
 
       for (let i = 0; i < imageUrls.length; i++) {
         const imageUrl = imageUrls[i];
-        
+
         if (!imageUrl || typeof imageUrl !== "string") {
           console.log(`Skipping invalid image URL at index ${i}:`, imageUrl);
           continue;
@@ -248,7 +249,8 @@ export async function GET(
           const embeddedImage = await fetchAndEmbedImage(pdfDoc, imageUrl);
 
           if (embeddedImage) {
-            const totalRowWidth = imageWidth * imagesPerRow + spacing * (imagesPerRow - 1);
+            const totalRowWidth =
+              imageWidth * imagesPerRow + spacing * (imagesPerRow - 1);
             const startX = pageMargin + 20 + (contentWidth - totalRowWidth) / 2;
             const imageX = startX + currentCol * (imageWidth + spacing);
 
@@ -262,10 +264,10 @@ export async function GET(
               ({ width, height } = currentPage.getSize());
               addHeader(currentPage, pdfDoc.getPageCount());
               y = height - headerHeight - 40;
-              
+
               // Recalculate position on new page
               const newImageY = y;
-              
+
               // Add border with color fill around image
               currentPage.drawRectangle({
                 x: imageX - 3,
@@ -283,7 +285,7 @@ export async function GET(
                 width: imageWidth,
                 height: imageHeight,
               });
-              
+
               y = newImageY - imageHeight - 20;
             } else {
               // Add border with color fill around image
@@ -305,7 +307,10 @@ export async function GET(
               });
 
               // Update y position after completing a row
-              if (currentCol === imagesPerRow - 1 || i === imageUrls.length - 1) {
+              if (
+                currentCol === imagesPerRow - 1 ||
+                i === imageUrls.length - 1
+              ) {
                 y = imageY - imageHeight - 30;
               }
             }
@@ -388,6 +393,7 @@ export async function GET(
     };
 
     // Enhanced function to write HTML content without bullet points
+    // Enhanced function to write HTML content without bullet points
     const writeHtmlContent = (
       label: string,
       htmlContent: string,
@@ -400,7 +406,11 @@ export async function GET(
 
       if (label) {
         checkAndAddNewPage(25);
-        currentPage.drawText(`${label}:`, {
+
+        // Remove colon if label ends with a number, roman numeral, or letter
+        const cleanedLabel = label.replace(/(\d+|[ivx]+|[a-z])$/i, "$1");
+
+        currentPage.drawText(cleanedLabel, {
           x: pageMargin + indent,
           y: y,
           size: 12,
@@ -410,9 +420,17 @@ export async function GET(
       }
 
       for (const section of sections) {
+        let text = section.text;
+
+        // Remove leading colon if present
+        text = text.replace(/^:\s*/, "");
+
+        // Remove colon that appears before numbering/letters/roman numerals - FIXED LINE
+        text = text.replace(/^:\s*(\d+|[ivx]+|[a-z])\.\s/i, "$1. ");
+
         if (section.isHeader) {
           checkAndAddNewPage(40);
-          currentPage.drawText(section.text, {
+          currentPage.drawText(text, {
             x: pageMargin + indent + 20,
             y: y,
             size: 14,
@@ -420,63 +438,25 @@ export async function GET(
             color: rgb(0.2, 0.2, 0.7),
           });
           y -= lineHeight + 5;
-        } else if (section.text.match(/^\d+\.\s/)) {
-          // Handle numbered lists (1. 2. 3. etc)
-          const numberedText = section.text.replace(/^(\d+)\.\s*/, "$1. ");
+        } else if (text.match(/^\d+\.\s/)) {
+          // Handle numbered items (1., 2., etc.)
+          const numberedText = text.replace(/^(\d+)\.\s*/, "$1. ");
           writeText("", numberedText, indent + 20);
-        } else if (section.text.startsWith("• ")) {
-          // Remove bullet point and just display as normal text
-          const listText = section.text.substring(2);
+        } else if (text.startsWith("• ")) {
+          // Handle bullet points
+          const listText = text.substring(2);
           writeText("", listText, indent + 20);
-        } else if (section.text.match(/^[ivx]+\.\s/i)) {
-          // Handle roman numeral lists (i. ii. iii. etc)
-          const romanText = section.text.replace(/^([ivx]+)\.\s*/i, "$1. ");
+        } else if (text.match(/^[ivx]+\.\s/i)) {
+          // Handle roman numerals (i., ii., iii., etc.)
+          const romanText = text.replace(/^([ivx]+)\.\s*/i, "$1. ");
           writeText("", romanText, indent + 20);
-        } else if (section.text.match(/^[a-z]\.\s/i)) {
-          // Handle letter lists (a. b. c. etc)
-          const letterText = section.text.replace(/^([a-z])\.\s*/i, "$1. ");
+        } else if (text.match(/^[a-z]\.\s/i)) {
+          // Handle letter items (a., b., c., etc.)
+          const letterText = text.replace(/^([a-z])\.\s*/i, "$1. ");
           writeText("", letterText, indent + 20);
         } else {
-          // Regular paragraph text
-          const maxWidth = contentWidth - indent - 20;
-          const words = section.text.split(" ");
-          let lines: string[] = [];
-          let currentLine = "";
-
-          for (const word of words) {
-            const testLine = currentLine + word + " ";
-            const safeTestLine = sanitizeText(testLine);
-
-            let textWidth: number;
-            try {
-              textWidth = font.widthOfTextAtSize(safeTestLine, 12);
-            } catch (err) {
-              textWidth = 0;
-            }
-
-            if (textWidth > maxWidth && currentLine !== "") {
-              lines.push(sanitizeText(currentLine.trim()));
-              currentLine = word + " ";
-            } else {
-              currentLine = testLine;
-            }
-          }
-
-          if (currentLine.trim()) {
-            lines.push(sanitizeText(currentLine.trim()));
-          }
-
-          // Draw each line
-          for (const line of lines) {
-            checkAndAddNewPage(25);
-            currentPage.drawText(line, {
-              x: pageMargin + indent + 20,
-              y: y,
-              size: 12,
-              font: font,
-            });
-            y -= lineHeight;
-          }
+          // Handle regular paragraphs
+          writeText("", text, indent + 20);
         }
       }
 
@@ -839,7 +819,7 @@ export async function GET(
     // FULL HEIGHT LEFT SIDE PADDING - This fills the entire left side height
     const leftPaddingWidth = pageMargin - 10;
     const fullPageHeight = height; // Full page height
-    
+
     currentPage.drawRectangle({
       x: 0,
       y: 0, // Start from bottom of page
@@ -956,23 +936,19 @@ export async function GET(
     writeTitle("1. VALUATION INSTRUCTIONS");
     if (report.instructions) {
       writeText(
-        "Verbal Instructions",
+        "Verbal instructions given to us by ",
         report.instructions.verbalInstructions || "N/A",
         20
       );
       writeText(
-        "Written Instructions",
+        "Writen instructions given to us by",
         report.instructions.writtenInstructions || "N/A",
         20
       );
-      writeText(
-        "Inspection Date",
-        report.instructions.inspectedDate || "N/A",
-        20
-      );
+      writeText("Date", report.instructions.inspectedDate || "N/A", 20);
+      writeArray("Purposes", report.instructions.purposes, 20);
       writeText("Inspected By", report.instructions.inspectedBy || "N/A", 20);
       writeText("Report Date", report.instructions.date || "N/A", 20);
-      writeArray("Purposes", report.instructions.purposes, 20);
     }
 
     // 2. DEFINITION OF VALUES
@@ -1000,10 +976,17 @@ export async function GET(
     writeTitle("6. PROFESSIONAL DECLARATIONS");
     if (report.declaration) {
       if (report.declaration.techName) {
-        writeText("Technician Valuer", report.declaration.techName, 20, true);
-        writeText("Position", report.declaration.techPosition || "N/A", 20);
-        writeText("Date", report.declaration.techDate || "N/A", 20);
-        writeText("Statement", report.declaration.techStatement || "N/A", 20);
+
+        if (report.declaration) {
+  writeText("",
+    `I ${report.declaration.techName || "N/A"} ${report.declaration.techStatement || "N/A"}`,
+    20
+  );
+  writeText("",report.declaration.techPosition || "N/A", 20);
+  writeText("",report.declaration.techDate || "N/A", 20);
+}
+
+
 
         // Add technician signature image
         if (report.declaration.techSignature) {
@@ -1276,94 +1259,96 @@ export async function GET(
     // }
 
     // Add site work images
-const siteWorkPictures = report.siteWorks?.pictures;
-if (siteWorkPictures) {
-  let imageUrls: string[] = [];
+    const siteWorkPictures = report.siteWorks?.pictures;
+    if (siteWorkPictures) {
+      let imageUrls: string[] = [];
 
-  if (typeof siteWorkPictures === "string") {
-    try {
-      imageUrls = JSON.parse(siteWorkPictures);
-    } catch (e) {
-      console.error("Failed to parse site work pictures JSON:", e);
-      imageUrls = [];
-    }
-  } else if (Array.isArray(siteWorkPictures)) {
-    imageUrls = siteWorkPictures;
-  }
-
-  if (imageUrls.length > 0) {
-    checkAndAddNewPage(50);
-    currentPage.drawText("Site Work Photographs:", {
-      x: pageMargin + 20,
-      y: y,
-      size: 14,
-      font: boldFont,
-      color: rgb(0, 0, 0.6),
-    });
-    y -= 25;
-
-    const imageWidth = 200;
-    const imageHeight = 150;
-    const gapX = 40; // horizontal gap between images
-    const gapY = 40; // vertical gap between rows
-
-    let col = 0; // track column (0 = left, 1 = right)
-    let startX = pageMargin + 20;
-
-    for (let i = 0; i < imageUrls.length; i++) {
-      const imageUrl = imageUrls[i];
-
-      if (!imageUrl || typeof imageUrl !== "string") {
-        console.log(`Skipping invalid image URL at index ${i}:`, imageUrl);
-        continue;
-      }
-
-      try {
-        const embeddedImage = await fetchAndEmbedImage(pdfDoc, imageUrl);
-
-        if (embeddedImage) {
-          // check if there's enough vertical space
-          checkAndAddNewPage(imageHeight + gapY);
-
-          const xPos = startX + col * (imageWidth + gapX);
-          const yPos = y - imageHeight;
-
-          currentPage.drawText(`Photo ${i + 1}:`, {
-            x: xPos,
-            y: y,
-            size: 12,
-            font: font,
-          });
-
-          currentPage.drawImage(embeddedImage, {
-            x: xPos,
-            y: yPos,
-            width: imageWidth,
-            height: imageHeight,
-          });
-
-          // Move column
-          if (col === 0) {
-            col = 1; // move to right column
-          } else {
-            col = 0;
-            y -= imageHeight + gapY; // new row
-          }
-        } else {
-          console.error(`Failed to embed site work image ${i + 1}:`, imageUrl);
+      if (typeof siteWorkPictures === "string") {
+        try {
+          imageUrls = JSON.parse(siteWorkPictures);
+        } catch (e) {
+          console.error("Failed to parse site work pictures JSON:", e);
+          imageUrls = [];
         }
-      } catch (error) {
-        console.error(`Error processing site work image ${i + 1}:`, error);
+      } else if (Array.isArray(siteWorkPictures)) {
+        imageUrls = siteWorkPictures;
+      }
+
+      if (imageUrls.length > 0) {
+        checkAndAddNewPage(50);
+        currentPage.drawText("Site Work Photographs:", {
+          x: pageMargin + 20,
+          y: y,
+          size: 14,
+          font: boldFont,
+          color: rgb(0, 0, 0.6),
+        });
+        y -= 25;
+
+        const imageWidth = 200;
+        const imageHeight = 150;
+        const gapX = 40; // horizontal gap between images
+        const gapY = 40; // vertical gap between rows
+
+        let col = 0; // track column (0 = left, 1 = right)
+        let startX = pageMargin + 20;
+
+        for (let i = 0; i < imageUrls.length; i++) {
+          const imageUrl = imageUrls[i];
+
+          if (!imageUrl || typeof imageUrl !== "string") {
+            console.log(`Skipping invalid image URL at index ${i}:`, imageUrl);
+            continue;
+          }
+
+          try {
+            const embeddedImage = await fetchAndEmbedImage(pdfDoc, imageUrl);
+
+            if (embeddedImage) {
+              // check if there's enough vertical space
+              checkAndAddNewPage(imageHeight + gapY);
+
+              const xPos = startX + col * (imageWidth + gapX);
+              const yPos = y - imageHeight;
+
+              currentPage.drawText(`Photo ${i + 1}:`, {
+                x: xPos,
+                y: y,
+                size: 12,
+                font: font,
+              });
+
+              currentPage.drawImage(embeddedImage, {
+                x: xPos,
+                y: yPos,
+                width: imageWidth,
+                height: imageHeight,
+              });
+
+              // Move column
+              if (col === 0) {
+                col = 1; // move to right column
+              } else {
+                col = 0;
+                y -= imageHeight + gapY; // new row
+              }
+            } else {
+              console.error(
+                `Failed to embed site work image ${i + 1}:`,
+                imageUrl
+              );
+            }
+          } catch (error) {
+            console.error(`Error processing site work image ${i + 1}:`, error);
+          }
+        }
+
+        // If last row had only 1 image, move y down to avoid overlap with next section
+        if (col === 1) {
+          y -= imageHeight + gapY;
+        }
       }
     }
-
-    // If last row had only 1 image, move y down to avoid overlap with next section
-    if (col === 1) {
-      y -= imageHeight + gapY;
-    }
-  }
-}
-
 
     // 10. BUILDING DETAILS
     checkAndAddNewPage(100);
@@ -1390,97 +1375,102 @@ if (siteWorkPictures) {
     }
 
     // PROPERLY DISPLAY BUILDING IMAGES UNDER BUILDING SECTION
-   // Add building images
-const buildingPictures = report.building?.pictures;
-if (buildingPictures) {
-  let buildingImageUrls: string[] = [];
+    // Add building images
+    const buildingPictures = report.building?.pictures;
+    if (buildingPictures) {
+      let buildingImageUrls: string[] = [];
 
-  if (typeof buildingPictures === "string") {
-    try {
-      buildingImageUrls = JSON.parse(buildingPictures);
-    } catch (e) {
-      console.error("Failed to parse building pictures JSON:", e);
-      buildingImageUrls = [];
-    }
-  } else if (Array.isArray(buildingPictures)) {
-    buildingImageUrls = buildingPictures;
-  }
-
-  if (buildingImageUrls.length > 0) {
-    checkAndAddNewPage(50);
-    currentPage.drawText("Building Photographs:", {
-      x: pageMargin + 20,
-      y: y,
-      size: 14,
-      font: boldFont,
-      color: rgb(0, 0, 0.6),
-    });
-    y -= 25;
-
-    const imageWidth = 200;
-    const imageHeight = 150;
-    const gapX = 40; // horizontal space between columns
-    const gapY = 40; // vertical space between rows
-
-    let col = 0; // 0 = left, 1 = right
-    let startX = pageMargin + 20;
-
-    for (let i = 0; i < buildingImageUrls.length; i++) {
-      const imageUrl = buildingImageUrls[i];
-
-      if (!imageUrl || typeof imageUrl !== "string") {
-        console.log(`Skipping invalid building image URL at index ${i}:`, imageUrl);
-        continue;
-      }
-
-      try {
-        const embeddedImage = await fetchAndEmbedImage(pdfDoc, imageUrl);
-
-        if (embeddedImage) {
-          // check if page has enough space
-          checkAndAddNewPage(imageHeight + gapY);
-
-          const xPos = startX + col * (imageWidth + gapX);
-          const yPos = y - imageHeight;
-
-          // Draw label above each image
-          currentPage.drawText(`Building Photo ${i + 1}:`, {
-            x: xPos,
-            y: y,
-            size: 12,
-            font: font,
-          });
-
-          // Draw the image
-          currentPage.drawImage(embeddedImage, {
-            x: xPos,
-            y: yPos,
-            width: imageWidth,
-            height: imageHeight,
-          });
-
-          // Move to next column / row
-          if (col === 0) {
-            col = 1; // move to right column
-          } else {
-            col = 0;
-            y -= imageHeight + gapY; // new row
-          }
-        } else {
-          console.error(`Failed to embed building image ${i + 1}:`, imageUrl);
+      if (typeof buildingPictures === "string") {
+        try {
+          buildingImageUrls = JSON.parse(buildingPictures);
+        } catch (e) {
+          console.error("Failed to parse building pictures JSON:", e);
+          buildingImageUrls = [];
         }
-      } catch (error) {
-        console.error(`Error processing building image ${i + 1}:`, error);
+      } else if (Array.isArray(buildingPictures)) {
+        buildingImageUrls = buildingPictures;
+      }
+
+      if (buildingImageUrls.length > 0) {
+        checkAndAddNewPage(50);
+        currentPage.drawText("Building Photographs:", {
+          x: pageMargin + 20,
+          y: y,
+          size: 14,
+          font: boldFont,
+          color: rgb(0, 0, 0.6),
+        });
+        y -= 25;
+
+        const imageWidth = 200;
+        const imageHeight = 150;
+        const gapX = 40; // horizontal space between columns
+        const gapY = 40; // vertical space between rows
+
+        let col = 0; // 0 = left, 1 = right
+        let startX = pageMargin + 20;
+
+        for (let i = 0; i < buildingImageUrls.length; i++) {
+          const imageUrl = buildingImageUrls[i];
+
+          if (!imageUrl || typeof imageUrl !== "string") {
+            console.log(
+              `Skipping invalid building image URL at index ${i}:`,
+              imageUrl
+            );
+            continue;
+          }
+
+          try {
+            const embeddedImage = await fetchAndEmbedImage(pdfDoc, imageUrl);
+
+            if (embeddedImage) {
+              // check if page has enough space
+              checkAndAddNewPage(imageHeight + gapY);
+
+              const xPos = startX + col * (imageWidth + gapX);
+              const yPos = y - imageHeight;
+
+              // Draw label above each image
+              currentPage.drawText(`Building Photo ${i + 1}:`, {
+                x: xPos,
+                y: y,
+                size: 12,
+                font: font,
+              });
+
+              // Draw the image
+              currentPage.drawImage(embeddedImage, {
+                x: xPos,
+                y: yPos,
+                width: imageWidth,
+                height: imageHeight,
+              });
+
+              // Move to next column / row
+              if (col === 0) {
+                col = 1; // move to right column
+              } else {
+                col = 0;
+                y -= imageHeight + gapY; // new row
+              }
+            } else {
+              console.error(
+                `Failed to embed building image ${i + 1}:`,
+                imageUrl
+              );
+            }
+          } catch (error) {
+            console.error(`Error processing building image ${i + 1}:`, error);
+          }
+        }
+
+        // If last row only had one image, adjust y down
+        if (col === 1) {
+          y -= imageHeight + gapY;
+        }
       }
     }
-
-    // If last row only had one image, adjust y down
-    if (col === 1) {
-      y -= imageHeight + gapY;
-    }
-  }
-}
-
 
     // 11. GENERAL REMARKS
     if (report.generalRemarks) {
