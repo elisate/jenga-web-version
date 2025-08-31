@@ -102,23 +102,27 @@ export async function GET(
         color: rgb(0.1, 0.2, 0.6),
       });
 
-      page.drawText("RESIDENTIAL PROPERTY", {
-        x: pageMargin,
-        y: height - 57,
-        size: 10,
-        font: font,
-        color: rgb(0.1, 0.2, 0.6),
-      });
+      // page.drawText("RESIDENTIAL PROPERTY", {
+      //   x: pageMargin,
+      //   y: height - 57,
+      //   size: 10,
+      //   font: font,
+      //   color: rgb(0.1, 0.2, 0.6),
+      // });
 
-      if (pageNumber > 1) {
-        page.drawText(`Report ID: ${id}`, {
-          x: width - 200,
-          y: height - 65,
-          size: 9,
-          font: font,
-          color: rgb(0.5, 0.5, 0.5),
-        });
-      }
+if (pageNumber > 1) {
+  const text = `Report ID: ${id}`;
+  const textWidth = font.widthOfTextAtSize(text, 9); // measure text width
+
+  page.drawText(text, {
+    x: width - textWidth - 20, // keep 20px margin from right
+    y: height - 65,
+    size: 9,
+    font: font,
+    color: rgb(0.5, 0.5, 0.5),
+  });
+}
+
 
       // Header separator line
       page.drawLine({
