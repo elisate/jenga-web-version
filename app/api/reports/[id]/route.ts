@@ -1147,27 +1147,9 @@ export async function GET(req: Request, { params }: { params: any }) {
     checkAndAddNewPage(100);
     writeTitle("8. TENURE AND TENANCIES");
     if (report.landTenure) {
-      writeText("Tenure Type", report.landTenure.tenure || "N/A", 20, true);
-      writeText("Occupancy", report.landTenure.occupancy || "N/A", 20);
-      writeText(
-        "Plot Size",
-        report.landTenure.plot_size_sqm
-          ? `${report.landTenure.plot_size_sqm} sqm`
-          : "N/A",
-        20
-      );
-      writeText("Plot Shape", report.landTenure.plot_shape || "N/A", 20);
-      writeText("NLA Zoning", report.landTenure.nla_zoning || "N/A", 20);
-      writeText(
-        "Land Title Use",
-        report.landTenure.land_title_use || "N/A",
-        20
-      );
-      writeText(
-        "Current Land Use",
-        report.landTenure.land_current_use || "N/A",
-        20
-      );
+      writeTitle("Tenure")
+      writeText("Tenure Type", report.landTenure.tenure || "N/A", 20);
+
       writeText(
         "Tenure Years",
         report.landTenure.tenure_years?.toString() || "N/A",
@@ -1178,7 +1160,33 @@ export async function GET(req: Request, { params }: { params: any }) {
         report.landTenure.tenure_start_date || "N/A",
         20
       );
+      writeText("Occupancy", report.landTenure.occupancy || "N/A", 20);
       writeText("Encumbrances", report.landTenure.encumbrances || "N/A", 20);
+      writeText(
+        "Plot Size",
+        report.landTenure.plot_size_sqm
+          ? `${report.landTenure.plot_size_sqm} sqm`
+          : "N/A",
+        20
+      );
+
+      writeText("Plot Shape", report.landTenure.plot_shape || "N/A", 20);
+      writeTitle("use")
+      writeText(
+        "Land Title Use",
+        report.landTenure.land_title_use || "N/A",
+        20
+      );
+      writeText(
+        "Current Land Use",
+        report.landTenure.land_current_use || "N/A",
+        20
+      );
+      writeText("NLA Zoning", report.landTenure.nla_zoning || "N/A", 20);
+     
+       writeTitle(
+        "Master Plan"
+      );
       writeText(
         "Permitted Uses",
         report.landTenure.permitted_uses || "N/A",
@@ -1190,7 +1198,7 @@ export async function GET(req: Request, { params }: { params: any }) {
         20
       );
       writeText(
-        "Lot Size Notes",
+        "Lot Size",
         report.landTenure.lot_size_notes || "N/A",
         20
       );

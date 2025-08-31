@@ -53,7 +53,7 @@ const Declaration: React.FC<DeclarationProps> = ({
     techStatement:
       value?.techStatement ||
       user?.declaration_content ||
-      `"Technician Valuer, hereby declare that I have personally captured and collected accurate and real information data related to the property / asset assessment, including but not limited to the following: Building dimensions; 	Photographs of the property; Geographic coordinates; Additional relevant data collected during the assessment.
+      `Technician Valuer, hereby declare that I have personally captured and collected accurate and real information data related to the property / asset assessment, including but not limited to the following: Building dimensions; 	Photographs of the property; Geographic coordinates; Additional relevant data collected during the assessment.
 I hold myself responsible and confirm that the information provided is true and certain to the best of my knowledge and belief."
 `,
     assistantName: value?.assistantName || "_________",
