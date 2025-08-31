@@ -666,7 +666,8 @@ export async function GET(req: Request, { params }: { params: any }) {
     const propertyTitle = `VALUATION REPORT OF A RESIDENTIAL PROPERTY`;
     const propertyUPI =
       report.property?.propertyUPI || report.property?.upi || "N/A";
-    const location = `${report.property?.village || ""} Village, ${report.property?.sector || ""
+    const location = `${report.property?.village || ""} Village, ${report.property?.cell || ""
+      } Cell, ${report.property?.sector || ""
       } Sector, ${report.property?.district || ""} District, ${report.property?.province || ""
       } Province`.replace(/^, |, $/g, "");
 
