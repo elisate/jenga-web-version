@@ -101,12 +101,12 @@ const Instructions: React.FC<InstructionsProps> = ({
             </th>
             <td className="border border-gray-300 p-2">{instructions.verbalInstructions || "—"}</td>
           </tr>
-          <tr>
+          {/* <tr>
             <th className="border text-left border-gray-300 p-2 bg-[#f5f3ff]">
               {labelWithStatus("Written instructions given to us by", instructions.writtenInstructions)}
             </th>
             <td className="border border-gray-300 p-2">{instructions.writtenInstructions || "—"}</td>
-          </tr>
+          </tr> */}
           <tr>
             <th className="border text-left border-gray-300 p-2 bg-[#f5f3ff]">
               {labelWithStatus("Date", instructions.date)}
