@@ -38,6 +38,8 @@ export async function GET(req: Request, { params }: { params: any }) {
     const pdfDoc = await PDFDocument.create();
     const font = await loadMontserratFont(pdfDoc);
     const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    const normalFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+
 
     let currentPage = pdfDoc.addPage();
     let { width, height } = currentPage.getSize();
@@ -332,6 +334,24 @@ export async function GET(req: Request, { params }: { params: any }) {
       });
       y -= sectionSpacing;
     };
+
+    // Subtitle writing function
+   const writeSubTitle = (
+  subtitle: string, 
+  size = 11,  // default size set to 10
+  bold = false
+) => {
+  checkAndAddNewPage(60);
+  currentPage.drawText(subtitle, {
+    x: pageMargin,
+    y: y,
+    size: size,
+    font: bold ? boldFont : normalFont, // use boldFont if bold=true
+    color: rgb(0, 0, 0),
+  });
+  y -= sectionSpacing / 2;
+};
+
 
     // Text writing function with word wrapping
     const writeText = (
@@ -1183,9 +1203,9 @@ export async function GET(req: Request, { params }: { params: any }) {
         20
       );
       writeText("NLA Zoning", report.landTenure.nla_zoning || "N/A", 20);
-     
-       writeTitle(
-        "Master Plan"
+
+      writeSubTitle(
+        "Master Plan", 11, true
       );
       writeText(
         "Permitted Uses",
