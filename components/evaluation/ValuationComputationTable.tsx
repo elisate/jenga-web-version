@@ -68,15 +68,15 @@ const ValuationTable: React.FC<ValuationTableProps> = ({ value, onChange }) => {
       updated[rowIndex] = computeRow(updated[rowIndex]);
       setData(updated);
       onChange?.({ main: updated, land: landValueRow, summary: summaryRows });
-    }else if (table === "land") {
-    const updated = computeRow([
+    } else if (table === "land") {
+      const updated = computeRow([
         ...landValueRow.slice(0, colIndex),
         val,
         ...landValueRow.slice(colIndex + 1)
-    ]);
-    setLandValueRow(updated);
-    onChange?.({ main: data, land: updated, summary: summaryRows });
-}
+      ]);
+      setLandValueRow(updated);
+      onChange?.({ main: data, land: updated, summary: summaryRows });
+    }
 
   };
 
@@ -108,9 +108,8 @@ const ValuationTable: React.FC<ValuationTableProps> = ({ value, onChange }) => {
       {row.map((cell, colIndex) => (
         <td
           key={colIndex}
-          className={`border border-gray-400 px-3 py-2 ${
-            colIndex > 2 ? "text-right" : "text-left"
-          }`}
+          className={`border border-gray-400 px-3 py-2 ${colIndex > 2 ? "text-right" : "text-left"
+            }`}
         >
           {table === "summary" || colIndex === 5 || colIndex === 7 ? (
             <span>{cell.toLocaleString()}</span>
@@ -136,7 +135,7 @@ const ValuationTable: React.FC<ValuationTableProps> = ({ value, onChange }) => {
 
   return (
     <div className="p-6 bg-white">
-      <h2 className="text-xl font-bold mb-4">
+      <h2 className="bg-gradient-to-r from-violet-600 to-purple-600 text-white px-4 py-2 font-bold text-lg">
         XI. VALUATION COMPUTATION TABLE
       </h2>
       <div className="overflow-x-auto">

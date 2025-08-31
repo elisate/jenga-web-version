@@ -463,49 +463,49 @@ export async function GET(req: Request, { params }: { params: any }) {
     };
 
     // Function to handle arrays without bullet points
-   // Function to handle arrays without bullet points, inline with label
-const writeArray = (
-  label: string,
-  values: string[] | string | undefined,
-  indent = 0
-) => {
-  if (!values) return;
+    // Function to handle arrays without bullet points, inline with label
+    const writeArray = (
+      label: string,
+      values: string[] | string | undefined,
+      indent = 0
+    ) => {
+      if (!values) return;
 
-  let arrayValues: string[] = [];
+      let arrayValues: string[] = [];
 
-  if (typeof values === "string") {
-    try {
-      const parsed = JSON.parse(values);
-      if (Array.isArray(parsed)) {
-        arrayValues = parsed;
+      if (typeof values === "string") {
+        try {
+          const parsed = JSON.parse(values);
+          if (Array.isArray(parsed)) {
+            arrayValues = parsed;
+          } else {
+            arrayValues = [values];
+          }
+        } catch {
+          arrayValues = [values];
+        }
+      } else if (Array.isArray(values)) {
+        arrayValues = values;
       } else {
-        arrayValues = [values];
+        return;
       }
-    } catch {
-      arrayValues = [values];
-    }
-  } else if (Array.isArray(values)) {
-    arrayValues = values;
-  } else {
-    return;
-  }
 
-  if (arrayValues.length === 0) return;
+      if (arrayValues.length === 0) return;
 
-  checkAndAddNewPage(25);
+      checkAndAddNewPage(25);
 
-  // Combine label and array values into one line
-  const textLine = `${label}: ${arrayValues.join(", ")}`;
+      // Combine label and array values into one line
+      const textLine = `${label}: ${arrayValues.join(", ")}`;
 
-  currentPage.drawText(textLine, {
-    x: pageMargin + indent,
-    y: y,
-    size: 12,
-    font: font, // no bold
-  });
+      currentPage.drawText(textLine, {
+        x: pageMargin + indent,
+        y: y,
+        size: 12,
+        font: font, // no bold
+      });
 
-  y -= lineHeight + 5; // move cursor down with extra space after line
-};
+      y -= lineHeight + 5; // move cursor down with extra space after line
+    };
 
 
     // Valuation table function
@@ -944,7 +944,7 @@ const writeArray = (
       // );
       writeText("Date", report.instructions.inspectedDate || "N/A", 20);
       writeArray("Purposes", report.instructions.purpose, 20);
-      writeArray("Bank", report.instructions.bank_name ||"N/A", 20);
+      writeArray("Bank", report.instructions.bank_name || "N/A", 20);
       writeText("inspection Date", report.instructions.inspectedDate || "N/A", 20);
       writeText("Inspected By", report.instructions.inspectedBy || "N/A", 20);
 
@@ -1199,21 +1199,26 @@ const writeArray = (
     // 9. SERVICES AND SITE WORKS
     checkAndAddNewPage(100);
     writeTitle("9. SERVICES AND SITE WORKS");
+
     if (report.siteWorks) {
       writeText("Site Name", report.siteWorks.site_name || "N/A", 20, true);
-      writeText(
-        "Boundary Wall",
-        report.siteWorks.has_boundary_wall ? "Yes" : "No",
-        20
-      );
+      // writeText(
+      //   "Boundary Wall",
+      //   report.siteWorks.has_boundary_wall ? "Yes" : "No",
+      //   20
+      // );
+      writeTitle("Services");
+      writeArray("Utility Supplies", report.siteWorks.supply_types, 20);
+      writeArray("Access Types", report.siteWorks.access_types, 20);
+      writeTitle("Site Works");
       writeArray("Wall Materials", report.siteWorks.walls, 20);
       writeArray("Wall Finishing", report.siteWorks.finishing, 20);
       writeArray("Foundation Types", report.siteWorks.foundation_types, 20);
       writeArray("Gate Types", report.siteWorks.gate_types, 20);
       writeArray("Yard Types", report.siteWorks.yard_types, 20);
       writeArray("Lighting", report.siteWorks.lighting, 20);
-      writeArray("Access Types", report.siteWorks.access_types, 20);
-      writeArray("Utility Supplies", report.siteWorks.supply_types, 20);
+
+
       writeText("CCTV System", report.siteWorks.cctv_installed || "N/A", 20);
       writeText(
         "Solar System",

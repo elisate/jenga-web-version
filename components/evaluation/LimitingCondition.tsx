@@ -42,10 +42,10 @@ const LimitingCondition: React.FC<LimitingConditionProps> = ({ onChange }) => {
    
     <ul style="margin-left:20px; font-size:16px;">
       ${limitingConditions
-        .map(
-          (item) => `<li><span style="font-weight:bold;">${item.id}.</span> ${item.text}</li>`
-        )
-        .join("")}
+      .map(
+        (item) => `<li><span style="font-weight:bold;">${item.id}.</span> ${item.text}</li>`
+      )
+      .join("")}
     </ul>
   `;
 
@@ -62,7 +62,7 @@ const LimitingCondition: React.FC<LimitingConditionProps> = ({ onChange }) => {
 
   return (
     <div className="mb-8 border border-gray-300 rounded-md overflow-hidden">
-       <h2 className="font-weight:bold; font-size:24px;">IV. LIMITING CONDITIONS IN THIS VALUATION</h2>
+      <h2 className="bg-gradient-to-r from-violet-600 to-purple-600 text-white px-4 py-2 font-bold text-lg">IV. LIMITING CONDITIONS IN THIS VALUATION</h2>
       <div className="bg-white text-black p-4">
         <EditorContent editor={editor} />
       </div>

@@ -15,7 +15,7 @@ interface AssumptionsProps {
   onChange: (val: string) => void;
 }
 
-const Assumptions: React.FC<AssumptionsProps> = ({ value, onChange }) => {
+const Assumptions: React.FC<AssumptionsProps> = ({onChange }) => {
   const assumptions: Point[] = [
     {
       id: "1",
@@ -70,7 +70,7 @@ const Assumptions: React.FC<AssumptionsProps> = ({ value, onChange }) => {
 
   return (
     <div className="mb-8 border border-gray-300 rounded-md overflow-hidden">
-       <h2 className="text-lg font-bold mb-4">V. ASSUMPTIONS</h2>
+       <h2 className="bg-gradient-to-r from-violet-600 to-purple-600 text-white px-4 py-2 font-bold text-lg">V. ASSUMPTIONS</h2>
       <div className="bg-white text-black p-4">
         <EditorContent editor={editor} />
       </div>

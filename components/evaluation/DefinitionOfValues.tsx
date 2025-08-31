@@ -15,7 +15,7 @@ interface DefinitionOfValuesProps {
   onChange: (val: string) => void;
 }
 
-const DefinitionOfValues: React.FC<DefinitionOfValuesProps> = ({ value, onChange }) => {
+const DefinitionOfValues: React.FC<DefinitionOfValuesProps> = ({onChange }) => {
   const definitions: Definition[] = [
     {
       id: "a",
