@@ -14,7 +14,7 @@ interface LimitingConditionProps {
   onChange: (val: string) => void;
 }
 
-const LimitingCondition: React.FC<LimitingConditionProps> = ({ value, onChange }) => {
+const LimitingCondition: React.FC<LimitingConditionProps> = ({ onChange }) => {
   const limitingConditions: Point[] = [
     {
       id: "i",
@@ -39,7 +39,7 @@ const LimitingCondition: React.FC<LimitingConditionProps> = ({ value, onChange }
   ];
 
   const initialContent = `
-    <h2 style="font-weight:bold; font-size:24px;">IV. LIMITING CONDITIONS IN THIS VALUATION</h2>
+   
     <ul style="margin-left:20px; font-size:16px;">
       ${limitingConditions
         .map(
@@ -62,6 +62,7 @@ const LimitingCondition: React.FC<LimitingConditionProps> = ({ value, onChange }
 
   return (
     <div className="mb-8 border border-gray-300 rounded-md overflow-hidden">
+       <h2 className="font-weight:bold; font-size:24px;">IV. LIMITING CONDITIONS IN THIS VALUATION</h2>
       <div className="bg-white text-black p-4">
         <EditorContent editor={editor} />
       </div>

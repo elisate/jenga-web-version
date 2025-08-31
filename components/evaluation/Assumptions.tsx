@@ -44,7 +44,7 @@ const Assumptions: React.FC<AssumptionsProps> = ({ value, onChange }) => {
   ];
 
   const initialContent = `
-    <h2 style="font-weight:bold; font-size:24px;">V. ASSUMPTIONS</h2>
+   
     <p style="font-size:16px; margin-bottom:12px;">
       In preparing this report, unless otherwise stated, the following assumptions have been made which we shall be under no duty to verify:
     </p>
@@ -70,6 +70,7 @@ const Assumptions: React.FC<AssumptionsProps> = ({ value, onChange }) => {
 
   return (
     <div className="mb-8 border border-gray-300 rounded-md overflow-hidden">
+       <h2 className="text-lg font-bold mb-4">V. ASSUMPTIONS</h2>
       <div className="bg-white text-black p-4">
         <EditorContent editor={editor} />
       </div>

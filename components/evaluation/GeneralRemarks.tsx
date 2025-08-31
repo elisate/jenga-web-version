@@ -19,7 +19,7 @@ const generalRemarksList = [
 
 const GeneralRemarks: React.FC<GeneralRemarksProps> = ({ value, onChange }) => {
   const initialContent = value || `
-    <h2 style="font-weight:bold; font-size:24px;">X. GENERAL REMARKS</h2>
+    
     <ul style="margin-left:20px; font-size:16px; list-style-type:disc;">
       ${generalRemarksList.map((remark) => `<li>${remark}</li>`).join("")}
     </ul>
@@ -41,6 +41,7 @@ const GeneralRemarks: React.FC<GeneralRemarksProps> = ({ value, onChange }) => {
 
   return (
     <div className="mb-8 border border-gray-300 rounded-md overflow-hidden bg-white text-black p-4">
+      <h2 className="font-weight:bold; font-size:24px;">X. GENERAL REMARKS</h2>
       <EditorContent editor={editor} />
     </div>
   );

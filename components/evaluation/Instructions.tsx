@@ -92,7 +92,7 @@ const Instructions: React.FC<InstructionsProps> = ({
 
   return (
     <div className="mb-8">
-      <h2 className="text-lg font-bold mb-4">I. INSTRUCTIONS</h2>
+      <h2 className="bg-gradient-to-r from-violet-600 to-purple-600 text-white px-4 py-2 font-bold text-lg">I. INSTRUCTIONS</h2>
       <table className="w-full border-collapse text-xs">
         <tbody>
           <tr>

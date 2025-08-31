@@ -21,7 +21,7 @@ interface BasisOfValuationProps {
   onChange: (val: string) => void;
 }
 
-const BasisOfValuation: React.FC<BasisOfValuationProps> = ({ value, onChange }) => {
+const BasisOfValuation: React.FC<BasisOfValuationProps> = ({ onChange }) => {
   const basis: Basis[] = [
     {
       id: "a",
@@ -54,7 +54,7 @@ const BasisOfValuation: React.FC<BasisOfValuationProps> = ({ value, onChange }) 
   ];
 
   const initialContent = `
-    <h2 style="font-weight:bold; font-size:24px;">III. BASIS OF VALUATION</h2>
+   
     ${basis
       .map(
         (item) => `
