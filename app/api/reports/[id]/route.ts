@@ -695,8 +695,10 @@ export async function GET(req: Request, { params }: { params: any }) {
       size: 12,
       font: font,
       color: rgb(0.2, 0.2, 0.2),
+      maxWidth: width - 2 * pageMargin, // ensures text does not overflow PDF padding
     });
     y -= 40;
+
 
     // Collect building images only (limit to 3)
 
