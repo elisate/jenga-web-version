@@ -7,12 +7,11 @@ import { loadMontserratFont } from "@/Reporting/loadMontserratFont";
 import { parseHtmlToText } from "@/Reporting/parseHtmlToText";
 import { sanitizeText } from "@/Reporting/sanitizeText";
 
-export async function GET(
-  req: Request,
-  { params }: { params: { id: string } } // destructure params correctly
-) {
-  // params.id is guaranteed because the route is /[id]
-  const id = params.id.trim(); // directly use id
+export async function GET(req: Request, { params }: { params: any }) {
+  // Await params before using
+  const resolvedParams = await params;
+  const id = resolvedParams.id?.trim();
+
   if (!id) {
     return NextResponse.json({ error: "Missing report ID" }, { status: 400 });
   }
@@ -146,7 +145,7 @@ if (pageNumber > 1) {
       });
 
       page.drawText(
-        "Tel No: 0783520172, 0788474844, 0728520172; Email: towerpropertyconsultancy@gmail.com",
+        "Tel No: 0783520172, 0788474844; Email: towerpropertyconsultancy@gmail.com",
         {
           x: pageMargin,
           y: footerY + 25,
@@ -209,121 +208,118 @@ if (pageNumber > 1) {
     };
 
     // Safe image display function with proper spacing
-    const displayImagesInGrid = (
-      imageUrls: string[],
-      title: string,
-      imagesPerRow = 2
-    ) => {
-      if (!imageUrls || imageUrls.length === 0) return;
+    const displayImagesInGrid = async (
+  imageUrls: string[],
+  title: string,
+  imagesPerRow = 2
+) => {
+  if (!imageUrls || imageUrls.length === 0) return;
 
-      const imageWidth = 180;
-      const imageHeight = 135;
-      const spacing = 20;
-      const rowSpacing = 45;
+  const imageWidth = 180;
+  const imageHeight = 135;
+  const spacing = 20;
+  const rowSpacing = 45;
 
-      // Add title
-      checkAndAddNewPage(50);
-      currentPage.drawText(title, {
-        x: pageMargin + 20,
-        y: y,
-        size: 14,
-        font: boldFont,
-        color: rgb(0, 0, 0.6),
-      });
-      y -= 30;
+  // Add title
+  checkAndAddNewPage(50);
+  currentPage.drawText(title, {
+    x: pageMargin + 20,
+    y: y,
+    size: 14,
+    font: boldFont,
+    color: rgb(0, 0, 0.6),
+  });
+  y -= 30;
 
-      for (let i = 0; i < imageUrls.length; i++) {
-        const imageUrl = imageUrls[i];
+  for (let i = 0; i < imageUrls.length; i++) {
+    const imageUrl = imageUrls[i];
 
-        if (!imageUrl || typeof imageUrl !== "string") {
-          console.log(`Skipping invalid image URL at index ${i}:`, imageUrl);
-          continue;
-        }
+    if (!imageUrl || typeof imageUrl !== "string") {
+      console.log(`Skipping invalid image URL at index ${i}:`, imageUrl);
+      continue;
+    }
 
-        const currentRow = Math.floor(i / imagesPerRow);
-        const currentCol = i % imagesPerRow;
-        const isNewRow = currentCol === 0;
+    const currentRow = Math.floor(i / imagesPerRow);
+    const currentCol = i % imagesPerRow;
+    const isNewRow = currentCol === 0;
 
-        // Check if we need space for a new row
-        if (isNewRow) {
-          checkAndAddNewPage(imageHeight + rowSpacing);
-        }
+    // Check if we need space for a new row
+    if (isNewRow) {
+      checkAndAddNewPage(imageHeight + rowSpacing);
+    }
 
-        try {
-          const embeddedImage = await fetchAndEmbedImage(pdfDoc, imageUrl);
+    try {
+      // ✅ works now because function is async
+      const embeddedImage = await fetchAndEmbedImage(pdfDoc, imageUrl);
 
-          if (embeddedImage) {
-            const totalRowWidth =
-              imageWidth * imagesPerRow + spacing * (imagesPerRow - 1);
-            const startX = pageMargin + 20 + (contentWidth - totalRowWidth) / 2;
-            const imageX = startX + currentCol * (imageWidth + spacing);
+      if (embeddedImage) {
+        const totalRowWidth =
+          imageWidth * imagesPerRow + spacing * (imagesPerRow - 1);
+        const startX = pageMargin + 20 + (contentWidth - totalRowWidth) / 2;
+        const imageX = startX + currentCol * (imageWidth + spacing);
 
-            // Calculate Y position for this image
-            const imageY = y - (isNewRow ? 0 : imageHeight + 20);
+        // Calculate Y position for this image
+        const imageY = y - (isNewRow ? 0 : imageHeight + 20);
 
-            // Ensure we're not in the footer area
-            if (imageY - imageHeight < footerHeight + 20) {
-              addFooter(currentPage, pdfDoc.getPageCount());
-              currentPage = pdfDoc.addPage();
-              ({ width, height } = currentPage.getSize());
-              addHeader(currentPage, pdfDoc.getPageCount());
-              y = height - headerHeight - 40;
+        // Ensure we're not in the footer area
+        if (imageY - imageHeight < footerHeight + 20) {
+          addFooter(currentPage, pdfDoc.getPageCount());
+          currentPage = pdfDoc.addPage();
+          ({ width, height } = currentPage.getSize());
+          addHeader(currentPage, pdfDoc.getPageCount());
+          y = height - headerHeight - 40;
 
-              // Recalculate position on new page
-              const newImageY = y;
+          const newImageY = y;
 
-              // Add border with color fill around image
-              currentPage.drawRectangle({
-                x: imageX - 3,
-                y: newImageY - imageHeight - 3,
-                width: imageWidth + 6,
-                height: imageHeight + 6,
-                color: rgb(0.95, 0.97, 1),
-                borderColor: rgb(0.1, 0.2, 0.6),
-                borderWidth: 1,
-              });
+          // Add border
+          currentPage.drawRectangle({
+            x: imageX - 3,
+            y: newImageY - imageHeight - 3,
+            width: imageWidth + 6,
+            height: imageHeight + 6,
+            color: rgb(0.95, 0.97, 1),
+            borderColor: rgb(0.1, 0.2, 0.6),
+            borderWidth: 1,
+          });
 
-              currentPage.drawImage(embeddedImage, {
-                x: imageX,
-                y: newImageY - imageHeight,
-                width: imageWidth,
-                height: imageHeight,
-              });
+          currentPage.drawImage(embeddedImage, {
+            x: imageX,
+            y: newImageY - imageHeight,
+            width: imageWidth,
+            height: imageHeight,
+          });
 
-              y = newImageY - imageHeight - 20;
-            } else {
-              // Add border with color fill around image
-              currentPage.drawRectangle({
-                x: imageX - 3,
-                y: imageY - imageHeight - 3,
-                width: imageWidth + 6,
-                height: imageHeight + 6,
-                color: rgb(0.95, 0.97, 1),
-                borderColor: rgb(0.1, 0.2, 0.6),
-                borderWidth: 1,
-              });
+          y = newImageY - imageHeight - 20;
+        } else {
+          // Add border
+          currentPage.drawRectangle({
+            x: imageX - 3,
+            y: imageY - imageHeight - 3,
+            width: imageWidth + 6,
+            height: imageHeight + 6,
+            color: rgb(0.95, 0.97, 1),
+            borderColor: rgb(0.1, 0.2, 0.6),
+            borderWidth: 1,
+          });
 
-              currentPage.drawImage(embeddedImage, {
-                x: imageX,
-                y: imageY - imageHeight,
-                width: imageWidth,
-                height: imageHeight,
-              });
+          currentPage.drawImage(embeddedImage, {
+            x: imageX,
+            y: imageY - imageHeight,
+            width: imageWidth,
+            height: imageHeight,
+          });
 
-              // Update y position after completing a row
-              if (
-                currentCol === imagesPerRow - 1 ||
-                i === imageUrls.length - 1
-              ) {
-                y = imageY - imageHeight - 30;
-              }
-            }
+          // Update y position after completing a row
+          if (currentCol === imagesPerRow - 1 || i === imageUrls.length - 1) {
+            y = imageY - imageHeight - 30;
           }
-        } catch (error) {
-          console.error(`Error processing image ${i + 1}:`, error);
         }
       }
-    };
+    } catch (error) {
+      console.error(`Error processing image ${i + 1}:`, error);
+    }
+  }
+};
 
     // Title writing function
     const writeTitle = (title: string, size = 16) => {
@@ -872,10 +868,10 @@ if (buildingImages.length > 0) {
       },
       { label: "Village", value: report.property?.village || "N/A" },
       { label: "Cell", value: report.property?.cell || "N/A" },
-      {
-        label: "Plot Size",
-        value: `${report.landTenure?.plot_size_sqm || "N/A"} sqm`,
-      },
+      // {
+      //   label: "Plot Size",
+      //   value: `${report.landTenure?.plot_size_sqm || "N/A"} sqm`,
+      // },
     ];
 
     // Right column details
@@ -1507,6 +1503,7 @@ if (buildingImages.length > 0) {
         "Content-Length": pdfBytes.length.toString(),
       },
     });
+    //return NextResponse.json({ message: `PDF generated for report ID: ${id}` });
   } catch (error) {
     console.error("Error generating PDF:", error);
     return NextResponse.json(
@@ -1516,5 +1513,6 @@ if (buildingImages.length > 0) {
       },
       { status: 500 }
     );
+
   }
 }
