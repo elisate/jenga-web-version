@@ -463,59 +463,50 @@ export async function GET(req: Request, { params }: { params: any }) {
     };
 
     // Function to handle arrays without bullet points
-    const writeArray = (
-      label: string,
-      values: string[] | string | undefined,
-      indent = 0
-    ) => {
-      if (!values) return;
+   // Function to handle arrays without bullet points, inline with label
+const writeArray = (
+  label: string,
+  values: string[] | string | undefined,
+  indent = 0
+) => {
+  if (!values) return;
 
-      let arrayValues: string[] = [];
+  let arrayValues: string[] = [];
 
-      if (typeof values === "string") {
-        try {
-          const parsed = JSON.parse(values);
-          if (Array.isArray(parsed)) {
-            arrayValues = parsed;
-          } else {
-            arrayValues = [values];
-          }
-        } catch {
-          arrayValues = [values];
-        }
-      } else if (Array.isArray(values)) {
-        arrayValues = values;
+  if (typeof values === "string") {
+    try {
+      const parsed = JSON.parse(values);
+      if (Array.isArray(parsed)) {
+        arrayValues = parsed;
       } else {
-        return;
+        arrayValues = [values];
       }
+    } catch {
+      arrayValues = [values];
+    }
+  } else if (Array.isArray(values)) {
+    arrayValues = values;
+  } else {
+    return;
+  }
 
-      if (arrayValues.length === 0) return;
+  if (arrayValues.length === 0) return;
 
-      checkAndAddNewPage(25);
+  checkAndAddNewPage(25);
 
-      // Bold header
-      currentPage.drawText(`${label}:`, {
-        x: pageMargin + indent,
-        y: y,
-        size: 12,
-        font: boldFont,
-      });
-      y -= lineHeight;
+  // Combine label and array values into one line
+  const textLine = `${label}: ${arrayValues.join(", ")}`;
 
-      // List items without bullets
-      arrayValues.forEach((value) => {
-        checkAndAddNewPage(25);
-        currentPage.drawText(value, {
-          x: pageMargin + indent + 20,
-          y: y,
-          size: 12,
-          font: font,
-        });
-        y -= lineHeight;
-      });
+  currentPage.drawText(textLine, {
+    x: pageMargin + indent,
+    y: y,
+    size: 12,
+    font: font, // no bold
+  });
 
-      y -= 5; // Extra space after list
-    };
+  y -= lineHeight + 5; // move cursor down with extra space after line
+};
+
 
     // Valuation table function
     const drawValuationTable = () => {
@@ -952,7 +943,8 @@ export async function GET(req: Request, { params }: { params: any }) {
       //   20
       // );
       writeText("Date", report.instructions.inspectedDate || "N/A", 20);
-      writeArray("Purposes", report.instructions.purposes, 20);
+      writeArray("Purposes", report.instructions.purpose, 20);
+      writeArray("Bank", report.instructions.bank_name ||"N/A", 20);
       writeText("inspection Date", report.instructions.inspectedDate || "N/A", 20);
       writeText("Inspected By", report.instructions.inspectedBy || "N/A", 20);
 

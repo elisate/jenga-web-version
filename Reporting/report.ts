@@ -6,7 +6,8 @@ export type ReportData = {
     verbalInstructions?: string;
     writtenInstructions?: string;
     date?: string;
-    purposes?: string[];
+    purpose?: string[];
+    bank_name?: string[];
     inspectedDate?: string;
     inspectedBy?: string;
   };
