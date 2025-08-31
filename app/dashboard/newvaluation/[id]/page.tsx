@@ -15,16 +15,12 @@ import {
 import Link from "next/link";
 
 // Import components
-import Instructions, {
-  InstructionsData,
-} from "@/components/evaluation/Instructions";
+import Instructions, { InstructionsData } from "@/components/evaluation/Instructions";
 import DefinitionOfValues from "@/components/evaluation/DefinitionOfValues";
 import BasisOfValuation from "@/components/evaluation/BasisOfValuation";
 import LimitingCondition from "@/components/evaluation/LimitingCondition";
 import Assumptions from "@/components/evaluation/Assumptions";
-import Declaration, {
-  DeclarationData,
-} from "@/components/evaluation/Declaration";
+import Declaration, { DeclarationData } from "@/components/evaluation/Declaration";
 import PropertyLocation from "@/components/evaluation/PropertyLocation";
 import TenureTenanciesPlot from "@/components/evaluation/TenureTenanciesPlot";
 import ServiceSiteWorks from "@/components/evaluation/ServiceSiteWorks";
@@ -49,6 +45,12 @@ interface ReportData {
   createdAt?: string | null;
 }
 
+// ✅ Helper: always return YYYY-MM-DD
+const formatDate = (dateStr?: string) => {
+  if (!dateStr) return "";
+  return new Date(dateStr).toISOString().split("T")[0];
+};
+
 export default function ValuationReport() {
   const { id } = useParams();
   const evaluationId = Number(id);
@@ -67,10 +69,10 @@ export default function ValuationReport() {
 
         const declaration: DeclarationData = {
           techName: data?.user
-            ? `${data.user.first_name ?? ""} ${data.user.last_name ?? ""}`
+            ? `${data.user.first_name ?? ""} ${data.user.last_name ?? ""}`.trim()
             : "_________",
           techPosition: data?.user?.title || "n/a",
-          techDate: "",
+          techDate: formatDate(data?.created_at || new Date().toISOString()), // ✅ fill date
           techSignature: data?.user?.signature || null,
           techStatement: data?.user?.declaration_content || "",
           assistantName: "",
@@ -85,23 +87,17 @@ export default function ValuationReport() {
           instructions: {
             verbalInstructions: data?.property?.owner || "—",
             writtenInstructions:
-              `${data?.user?.first_name ?? ""} ${
-                data?.user?.last_name ?? ""
-              }`.trim() || "—",
-            date:
-              data?.property?.created_at ||
-              new Date().toISOString().split("T")[0],
-            purposes: Array.isArray(data?.property?.bank_purpose)
-              ? data.property.bank_purpose
-              : data?.property?.bank_purpose
-              ? [data.property.bank_purpose]
-              : ["Bank purposes"],
-            inspectedDate:
-              data?.created_at || new Date().toISOString().split("T")[0],
+              `${data?.user?.first_name ?? ""} ${data?.user?.last_name ?? ""}`.trim() || "—",
+            date: formatDate(data?.property?.created_at || new Date().toISOString()),
+            purpose: Array.isArray(data?.property?.purpose)
+              ? data.property.purpose
+              : data?.property?.purpose
+              ? [data.property.purpose]
+              : ["Purpose"], // ✅ fallback
+            inspectedDate: formatDate(data?.created_at || new Date().toISOString()),
             inspectedBy:
-              `${data?.user?.first_name ?? ""} ${
-                data?.user?.last_name ?? ""
-              }`.trim() || "—",
+              `${data?.user?.first_name ?? ""} ${data?.user?.last_name ?? ""}`.trim() || "—",
+            bank_name: data?.property?.bank_name || "—",
           },
           definitionOfValues: "",
           basisOfValuation: "",
@@ -127,13 +123,21 @@ export default function ValuationReport() {
     if (!isNaN(evaluationId)) fetchEvaluation();
   }, [evaluationId]);
 
-  if (loading) return <p>Loading...</p>;
-  if (!reportData) return <p>No evaluation data found.</p>;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Loader2 className="w-6 h-6 text-violet-600 animate-spin" />
+        <span className="ml-2 text-gray-600">Loading report...</span>
+      </div>
+    );
+  }
+
+  if (!reportData) return <p className="text-center mt-10">No evaluation data found.</p>;
 
   const handleSaveReport = async () => {
     if (saving) return;
 
-    // ✅ Validation to avoid "not submitted please"
+    // ✅ Basic validation
     if (
       !reportData.instructions.verbalInstructions ||
       !reportData.instructions.writtenInstructions
@@ -177,10 +181,7 @@ export default function ValuationReport() {
     }
   };
 
-  const updateReport = <K extends keyof ReportData>(
-    key: K,
-    value: ReportData[K]
-  ) => {
+  const updateReport = <K extends keyof ReportData>(key: K, value: ReportData[K]) => {
     setReportData((prev) => (prev ? { ...prev, [key]: value } : prev));
   };
 

@@ -946,15 +946,16 @@ export async function GET(req: Request, { params }: { params: any }) {
         report.instructions.verbalInstructions || "N/A",
         20
       );
-      writeText(
-        "Writen instructions given to us by",
-        report.instructions.writtenInstructions || "N/A",
-        20
-      );
+      // writeText(
+      //   "Writen instructions given to us by",
+      //   report.instructions.writtenInstructions || "N/A",
+      //   20
+      // );
       writeText("Date", report.instructions.inspectedDate || "N/A", 20);
       writeArray("Purposes", report.instructions.purposes, 20);
+      writeText("inspection Date", report.instructions.inspectedDate || "N/A", 20);
       writeText("Inspected By", report.instructions.inspectedBy || "N/A", 20);
-      writeText("Report Date", report.instructions.date || "N/A", 20);
+
     }
 
     // 2. DEFINITION OF VALUES
@@ -1114,15 +1115,20 @@ export async function GET(req: Request, { params }: { params: any }) {
     checkAndAddNewPage(100);
     writeTitle("7. PROPERTY LOCATION");
     if (report.property) {
+      // writeText(
+      //   "Property Owner",
+      //   report.instructions?.verbalInstructions || "N/A",
+      //   20,
+      //   true
+      // );
+      // writeText(
+      //   "UPI Number",
+      //   report.property.propertyUPI || report.property.upi || "N/A",
+      //   20
+      // );
       writeText(
-        "Property Owner",
-        report.instructions?.verbalInstructions || "N/A",
-        20,
-        true
-      );
-      writeText(
-        "UPI Number",
-        report.property.propertyUPI || report.property.upi || "N/A",
+        "Geographical Coordinate Within the Property",
+        report.property.geographical_coordinate || "N/A",
         20
       );
       writeText(
@@ -1136,13 +1142,13 @@ export async function GET(req: Request, { params }: { params: any }) {
       writeText("District", report.property.district || "N/A", 20);
       writeText("Province", report.property.province || "N/A", 20);
       writeText("Country", report.property.country || "Rwanda", 20);
-      writeText(
-        "Geographical Coordinates",
-        report.property.geographical_coordinate ||
-        report.property.coordinates ||
-        "N/A",
-        20
-      );
+      // writeText(
+      //   "Geographical Coordinates",
+      //   report.property.geographical_coordinate ||
+      //   report.property.coordinates ||
+      //   "N/A",
+      //   20
+      // );
     }
 
     // 8. TENURE AND TENANCIES
