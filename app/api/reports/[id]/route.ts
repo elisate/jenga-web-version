@@ -370,53 +370,69 @@ const writeText = (
   checkAndAddNewPage(25);
 
   // Only add colon if label exists
-  const text = label && label.trim() !== "" ? `${label}: ${value}` : value;
+  let text = label && label.trim() !== "" ? `${label}: ${value}` : value;
 
   const maxWidth = contentWidth - indent;
   const fontSize = 12;
   const textFont = isBold ? boldFont : font;
 
-  // Word wrapping
+  // Split into words
   const words = text.split(" ");
   let lines: string[] = [];
-  let currentLine = "";
+  let currentLine: string[] = [];
+  let lineWidth = 0;
 
   for (const word of words) {
-    const testLine = currentLine + word + " ";
-    const safeTestLine = sanitizeText(testLine);
-
+    const testLine = [...currentLine, word].join(" ");
     let textWidth: number;
     try {
-      textWidth = textFont.widthOfTextAtSize(safeTestLine, fontSize);
+      textWidth = textFont.widthOfTextAtSize(testLine, fontSize);
     } catch (err) {
-      console.error("PDF encoding failed for line:", safeTestLine, err);
+      console.error("PDF encoding failed for line:", testLine, err);
       textWidth = 0;
     }
 
-    if (textWidth > maxWidth && currentLine !== "") {
-      lines.push(sanitizeText(currentLine.trim()));
-      currentLine = word + " ";
+    if (textWidth > maxWidth && currentLine.length > 0) {
+      lines.push(currentLine.join(" "));
+      currentLine = [word];
     } else {
-      currentLine = testLine;
+      currentLine.push(word);
     }
   }
 
-  if (currentLine.trim()) {
-    lines.push(sanitizeText(currentLine.trim()));
-  }
+  if (currentLine.length > 0) lines.push(currentLine.join(" "));
 
-  // Draw each line
-  for (const line of lines) {
+  // Draw each line justified
+  for (let i = 0; i < lines.length; i++) {
     checkAndAddNewPage(25);
-    currentPage.drawText(line, {
-      x: pageMargin + indent,
-      y: y,
-      size: fontSize,
-      font: textFont,
-    });
+    const line = lines[i].trim();
+    const wordsInLine = line.split(" ");
+    
+    // Last line is left-aligned
+    if (i === lines.length - 1 || wordsInLine.length === 1) {
+      currentPage.drawText(line, {
+        x: pageMargin + indent,
+        y,
+        size: fontSize,
+        font: textFont,
+      });
+    } else {
+      // Justify line: distribute extra space between words
+      const lineWidth = textFont.widthOfTextAtSize(line, fontSize);
+      const spaceCount = wordsInLine.length - 1;
+      const extraSpace = (maxWidth - lineWidth) / spaceCount;
+
+      let x = pageMargin + indent;
+      for (const word of wordsInLine) {
+        currentPage.drawText(word, { x, y, size: fontSize, font: textFont });
+        x += textFont.widthOfTextAtSize(word, fontSize) + extraSpace;
+      }
+    }
+
     y -= lineHeight;
   }
 };
+
 
 
 // Main function to write HTML content
