@@ -354,133 +354,133 @@ export async function GET(req: Request, { params }: { params: any }) {
 
 
     // Text writing function with word wrapping
-    const writeText = (
-      label: string,
-      value: string,
-      indent = 0,
-      isBold = false
-    ) => {
-      if (!value || value === "N/A") return;
-
-      checkAndAddNewPage(25);
-
-      const text = `${label}: ${value}`;
-      const maxWidth = contentWidth - indent;
-      const fontSize = 12;
-      const textFont = isBold ? boldFont : font;
-
-      // Calculate text width and wrap if necessary
-      const words = text.split(" ");
-      let lines: string[] = [];
-      let currentLine = "";
-
-      for (const word of words) {
-        const testLine = currentLine + word + " ";
-        const safeTestLine = sanitizeText(testLine);
-
-        let textWidth: number;
-        try {
-          textWidth = textFont.widthOfTextAtSize(safeTestLine, fontSize);
-        } catch (err) {
-          console.error("PDF encoding failed for line:", safeTestLine, err);
-          textWidth = 0;
-        }
-
-        if (textWidth > maxWidth && currentLine !== "") {
-          lines.push(sanitizeText(currentLine.trim()));
-          currentLine = word + " ";
-        } else {
-          currentLine = testLine;
-        }
-      }
-
-      if (currentLine.trim()) {
-        lines.push(sanitizeText(currentLine.trim()));
-      }
-
-      // Draw each line
-      for (const line of lines) {
-        checkAndAddNewPage(25);
-        currentPage.drawText(line, {
-          x: pageMargin + indent,
-          y: y,
-          size: fontSize,
-          font: textFont,
-        });
-        y -= lineHeight;
-      }
-    };
+   
 
     // Enhanced function to write HTML content without bullet points
     // Enhanced function to write HTML content without bullet points
-    const writeHtmlContent = (
-      label: string,
-      htmlContent: string,
-      indent = 0
-    ) => {
-      if (!htmlContent) return;
+// Helper function to write text to the PDF
+const writeText = (
+  label: string,
+  value: string,
+  indent = 0,
+  isBold = false
+) => {
+  if (!value || value === "N/A") return;
 
-      const sections = parseHtmlToText(htmlContent);
-      if (sections.length === 0) return;
+  checkAndAddNewPage(25);
 
-      if (label) {
-        checkAndAddNewPage(25);
+  // Only add colon if label exists
+  const text = label && label.trim() !== "" ? `${label}: ${value}` : value;
 
-        // Remove colon if label ends with a number, roman numeral, or letter
-        const cleanedLabel = label.replace(/(\d+|[ivx]+|[a-z])$/i, "$1");
+  const maxWidth = contentWidth - indent;
+  const fontSize = 12;
+  const textFont = isBold ? boldFont : font;
 
-        currentPage.drawText(cleanedLabel, {
-          x: pageMargin + indent,
-          y: y,
-          size: 12,
-          font: boldFont,
-        });
-        y -= lineHeight + 5;
-      }
+  // Word wrapping
+  const words = text.split(" ");
+  let lines: string[] = [];
+  let currentLine = "";
 
-      for (const section of sections) {
-        let text = section.text;
+  for (const word of words) {
+    const testLine = currentLine + word + " ";
+    const safeTestLine = sanitizeText(testLine);
 
-        // Remove leading colon if present
-        text = text.replace(/^:\s*/, "");
+    let textWidth: number;
+    try {
+      textWidth = textFont.widthOfTextAtSize(safeTestLine, fontSize);
+    } catch (err) {
+      console.error("PDF encoding failed for line:", safeTestLine, err);
+      textWidth = 0;
+    }
 
-        // Remove colon that appears before numbering/letters/roman numerals - FIXED LINE
-        text = text.replace(/^:\s*(\d+|[ivx]+|[a-z])\.\s/i, "$1. ");
+    if (textWidth > maxWidth && currentLine !== "") {
+      lines.push(sanitizeText(currentLine.trim()));
+      currentLine = word + " ";
+    } else {
+      currentLine = testLine;
+    }
+  }
 
-        if (section.isHeader) {
-          checkAndAddNewPage(40);
-          currentPage.drawText(text, {
-            x: pageMargin + indent + 20,
-            y: y,
-            size: 14,
-            font: boldFont,
-            color: rgb(0.2, 0.2, 0.7),
-          });
-          y -= lineHeight + 5;
-        } else if (text.match(/^\d+\.\s/)) {
-          // Handle numbered items (1., 2., etc.)
-          const numberedText = text.replace(/^(\d+)\.\s*/, "$1. ");
-          writeText("", numberedText, indent + 20);
-        } else if (text.startsWith("• ")) {
-          // Handle bullet points
-          const listText = text.substring(2);
-          writeText("", listText, indent + 20);
-        } else if (text.match(/^[ivx]+\.\s/i)) {
-          // Handle roman numerals (i., ii., iii., etc.)
-          const romanText = text.replace(/^([ivx]+)\.\s*/i, "$1. ");
-          writeText("", romanText, indent + 20);
-        } else if (text.match(/^[a-z]\.\s/i)) {
-          // Handle letter items (a., b., c., etc.)
-          const letterText = text.replace(/^([a-z])\.\s*/i, "$1. ");
-          writeText("", letterText, indent + 20);
-        } else {
-          // Handle regular paragraphs
-          writeText("", text, indent + 20);
-        }
-      }
+  if (currentLine.trim()) {
+    lines.push(sanitizeText(currentLine.trim()));
+  }
 
-      y -= 10;
-    };
+  // Draw each line
+  for (const line of lines) {
+    checkAndAddNewPage(25);
+    currentPage.drawText(line, {
+      x: pageMargin + indent,
+      y: y,
+      size: fontSize,
+      font: textFont,
+    });
+    y -= lineHeight;
+  }
+};
+
+
+// Main function to write HTML content
+const writeHtmlContent = (
+  label: string,
+  htmlContent: string,
+  indent = 0
+) => {
+  if (!htmlContent) return;
+
+  const sections = parseHtmlToText(htmlContent);
+  if (sections.length === 0) return;
+
+  // Draw label if provided
+  if (label) {
+    checkAndAddNewPage(25);
+    const cleanedLabel = label.replace(/^[:\s]+/, "").replace(/[:\s]+$/, "");
+    currentPage.drawText(cleanedLabel, {
+      x: pageMargin + indent,
+      y,
+      size: 12,
+      font: boldFont,
+    });
+    y -= lineHeight + 5;
+  }
+
+  for (const section of sections) {
+    let text = section.text;
+
+    // Remove leading/trailing colons/spaces
+    text = text.replace(/^[:\s]+/, "").replace(/[:\s]+$/, "");
+
+    // Also clean up numbered, roman, or letter items
+    text = text.replace(/^(\d+|[ivx]+|[a-z])\.\s/i, "$1. ");
+
+    if (section.isHeader) {
+      checkAndAddNewPage(40);
+      currentPage.drawText(text, {
+        x: pageMargin + indent + 20,
+        y,
+        size: 14,
+        font: boldFont,
+        color: rgb(0.2, 0.2, 0.7),
+      });
+      y -= lineHeight + 5;
+    } else if (text.match(/^\d+\.\s/)) {
+      writeText("", text, indent + 20);
+    } else if (text.startsWith("• ")) {
+      writeText("", text.substring(2), indent + 20);
+    } else if (text.match(/^[ivx]+\.\s/i)) {
+      writeText("", text, indent + 20);
+    } else if (text.match(/^[a-z]\.\s/i)) {
+      writeText("", text, indent + 20);
+    } else {
+      writeText("", text, indent + 20);
+    }
+  }
+
+  y -= 10;
+};
+
+
+
+
 
     // Function to handle arrays without bullet points
     // Function to handle arrays without bullet points, inline with label
@@ -973,7 +973,8 @@ export async function GET(req: Request, { params }: { params: any }) {
     // 2. DEFINITION OF VALUES
     checkAndAddNewPage(100);
     writeTitle("2. DEFINITION OF VALUES");
-    writeHtmlContent("", report.definitionOfValues || "N/A", 0);
+   writeHtmlContent("", report.definitionOfValues || "N/A", 0);
+
 
     // 3. BASIS OF VALUATION
     checkAndAddNewPage(100);
