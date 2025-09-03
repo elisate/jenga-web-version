@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { getEvaluationDetailsById } from "@/Reporting/evaluationDetail";
+import { getEvaluationDetailsWithHouses } from "@/Reporting/evaluationDetail";
 import { saveReport } from "@/Reporting/finalReport";
 import { 
   FileText, 
@@ -28,6 +28,25 @@ import Buildings from "@/components/evaluation/Buildings";
 import GeneralRemarks from "@/components/evaluation/GeneralRemarks";
 import ValuationComputationTable from "@/components/evaluation/ValuationComputationTable";
 
+// 🏠 Define House type (based on your Buildings component props)
+export interface House {
+  house_name: string;
+  condition?: string;
+  walls?: string[];
+  windows?: string[];
+  doors?: string[];
+  wall_finishing?: string[];
+  ceiling?: string[];
+  roof_member?: string;
+  roof_covering?: string[];
+  fittings?: string[];
+  pictures?: string[];
+  accommodation_units?: string;
+  other_accommodation_unit?: string;
+  foundation?: string[];
+  flooring?: string[];
+}
+
 interface ReportData {
   instructions: InstructionsData;
   definitionOfValues: string;
@@ -43,6 +62,7 @@ interface ReportData {
   valuationTable: any;
   user?: any;
   createdAt?: string | null;
+  houses?: House[];   // ✅ Added houses here
 }
 
 // ✅ Helper: always return YYYY-MM-DD
@@ -65,7 +85,7 @@ export default function ValuationReport() {
     async function fetchEvaluation() {
       setLoading(true);
       try {
-        const data = await getEvaluationDetailsById(evaluationId);
+        const data = await getEvaluationDetailsWithHouses(evaluationId);
 
         const declaration: DeclarationData = {
           techName: data?.user
@@ -108,6 +128,7 @@ export default function ValuationReport() {
           landTenure: data?.landTenure || {},
           siteWorks: data?.siteWorks || {},
           building: data?.building || null,
+          houses: data?.houses || [],   // ✅ populate houses
           generalRemarks: "",
           valuationTable: {},
           user: data?.user || null,
@@ -281,12 +302,13 @@ export default function ValuationReport() {
           siteWorks={reportData.siteWorks}
           onChange={(val) => updateReport("siteWorks", val)}
         />
+
+        {/* ✅ Pass houses to Buildings */}
         <Buildings
-          data={reportData.building}
-          onChange={(val) =>
-            setReportData((prev: any) => ({ ...prev, building: val }))
-          }
+          data={reportData.houses}
+          onChange={(val) => updateReport("houses", val)}
         />
+
         <GeneralRemarks
           value={reportData.generalRemarks}
           onChange={(val) => updateReport("generalRemarks", val)}
